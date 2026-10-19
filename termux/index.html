@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сайт Х - Такси Аукцион MVP</title>
+    <style>
+        :root {
+            --bg-color: #0f1115;
+            --card-bg: #1a1d24;
+            --accent-yellow: #f59e0b;
+            --accent-hover: #d97706;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --border-color: #2e3543;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            padding: 16px;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        /* Шапка водителя */
+        header {
+            background: linear-gradient(135deg, #1e293b, #0f172a);
+            border: 2px solid var(--accent-yellow);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+        }
+
+        .header-title {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--accent-yellow);
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .driver-selector {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .driver-btn {
+            flex: 1;
+            background-color: #2a2f3d;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .driver-btn.active {
+            background-color: var(--accent-yellow);
+            color: #000;
+            border-color: var(--accent-yellow);
+            font-weight: bold;
+        }
+
+        .balance-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .balance-text {
+            font-size: 15px;
+            color: var(--text-secondary);
+        }
+
+        .balance-amount {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--accent-yellow);
+        }
+
+        .deposit-btn {
+            background-color: var(--success-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        /* Разделы приложения */
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-left: 4px solid var(--accent-yellow);
+            padding-left: 8px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Форма пассажира */
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 1full;
+            width: 100%;
+            background-color: #2a2f3d;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-size: 15px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--accent-yellow);
+        }
+
+        .submit-btn {
+            background-color: var(--accent-yellow);
+            color: #000;
+            width: 100%;
+            border: none;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 8px;
+        }
+
+        .submit-btn:hover {
+            background-color: var(--accent-hover);
+        }
+
+        /* Живая лента заказов */
+        .refresh-btn {
+            background: none;
+            border: 1px solid var(--accent-yellow);
+            color: var(--accent-yellow);
+            font-size: 12px;
+            padding: 4px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .refresh-btn:hover {
+            background-color: rgba(245, 158, 11, 0.1);
+        }
+
+        .orders-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .order-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            transition: transform 0.2s;
+        }
+
+        .order-card.accepted {
+            border-color: var(--success-color);
+            background-color: #12221b;
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .price-tag {
+            background-color: var(--accent-yellow);
+            color: #000;
+            font-size: 20px;
+            font-weight: 900;
+            padding: 4px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+        }
+
+        .order-route {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-bottom: 16px;
+        }
+
+        .route-point {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 15px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot.from {
+            background-color: var(--accent-yellow);
+        }
+
+        .dot.to {
+            background-color: var(--success-color);
+        }
+
+        .route-label {
+            font-weight: 500;
+        }
+
+        /* Кнопка принятия */
+        .accept-btn {
+            background-color: #3b82f6;
+            color: white;
+            width: 100%;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-transform: uppercase;
+        }
+
+        .accept-btn:hover {
+            background-color: #2563eb;
+        }
+
+        .phone-display {
+            background-color: rgba(16, 185, 129, 0.2);
+            border: 2px dashed var(--success-color);
+            color: #10b981;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        .empty-orders {
+            text-align: center;
+            color: var(--text-secondary);
+            padding: 30px 0;
+            font-size: 14px;
+        }
+
+        /* Системные уведомления */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #333;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: none;
+            text-align: center;
+            max-width: 90%;
+        }
+
+        .toast.error {
+            background-color: var(--danger-color);
+        }
+
+        .toast.success {
+            background-color: var(--success-color);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Шапка Водителя -->
+    <header>
+        <div class="header-title">🚕 Аукцион Такси - Баланс Водителя</div>
+        <div class="driver-selector">
+            <button class="driver-btn active" id="btn-driver-1" onclick="selectDriver('driver_1')">Водитель: Аман</button>
+            <button class="driver-btn" id="btn-driver-2" onclick="selectDriver('driver_2')">Водитель: Ресул</button>
+        </div>
+        <div class="balance-container">
+            <div class="balance-text">Ваш кошелек: <span class="balance-amount" id="driver-balance">10.00</span> <span style="color: var(--accent-yellow); font-weight: bold;">TMT</span></div>
+            <button class="deposit-btn" onclick="replenishWallet()">+5 TMT</button>
+        </div>
+    </header>
+
+    <!-- Форма Пассажира -->
+    <div class="section-title">👤 Пассажир: Создать Заказ</div>
+    <div class="card">
+        <form id="order-form" onsubmit="handleCreateOrder(event)">
+            <div class="form-group">
+                <label for="from">Откуда (Пункт А)</label>
+                <input type="text" id="from" placeholder="Например: Аэропорт" required>
+            </div>
+            <div class="form-group">
+                <label for="to">Куда (Пункт Б)</label>
+                <input type="text" id="to" placeholder="Например: ТЦ Беркарар" required>
+            </div>
+            <div class="form-group">
+                <label for="price">Ваша цена (TMT)</label>
+                <input type="number" id="price" placeholder="Например: 15" min="1" step="0.5" required>
+            </div>
+            <div class="form-group">
+                <label for="phone">Номер телефона (для контакта)</label>
+                <input type="tel" id="phone" placeholder="Например: +99365123456" required>
+            </div>
+            <button type="submit" class="submit-btn">Опубликовать заказ</button>
+        </form>
+    </div>
+
+    <!-- Лента Водителя -->
+    <div class="section-title">
+        <span>⚡ Активные Заказы</span>
+        <button class="refresh-btn" onclick="fetchOrders()">Обновить ↻</button>
+    </div>
+    
+    <div class="orders-feed" id="orders-container">
+        <!-- Сюда будут загружаться заказы через JavaScript -->
+        <div class="empty-orders">Загрузка заказов...</div>
+    </div>
+
+    <!-- Уведомления -->
+    <div id="toast-message" class="toast"></div>
+
+    <script>
+        let currentDriverId = 'driver_1';
+        let driversList = [];
+        let acceptedOrdersContacts = {}; // Сохранение телефонов для принятых заказов во время сессии
+
+        // Инициализация при загрузке страницы
+        window.addEventListener('DOMContentLoaded', () => {
+            fetchDrivers();
+            fetchOrders();
+            // Периодическое обновление заказов каждые 5 секунд
+            setInterval(fetchOrders, 5000);
+        });
+
+        // Функция для показа уведомлений
+        function showToast(message, isSuccess = true) {
+            const toast = document.getElementById('toast-message');
+            toast.innerText = message;
+            toast.className = 'toast ' + (isSuccess ? 'success' : 'error');
+            toast.style.display = 'block';
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, 4000);
+        }
+
+        // Выбор текущего активного водителя
+        function selectDriver(driverId) {
+            currentDriverId = driverId;
+            document.getElementById('btn-driver-1').classList.toggle('active', driverId === 'driver_1');
+            document.getElementById('btn-driver-2').classList.toggle('active', driverId === 'driver_2');
+            updateBalanceUI();
+        }
+
+        // Обновление отображения баланса на экране
+        function updateBalanceUI() {
+            const driver = driversList.find(d => d.id === currentDriverId);
+            if (driver) {
+                document.getElementById('driver-balance').innerText = driver.balance.toFixed(2);
+            }
+        }
+
+        // Получить актуальные балансы с сервера
+        function fetchDrivers() {
+            fetch('/drivers')
+                .then(res => res.json())
+                .then(data => {
+                    driversList = data;
+                    updateBalanceUI();
+                })
+                .catch(err => {
+                    console.error('Ошибка получения баланса водителей:', err);
+                });
+        }
+
+        // Получить ленту свободных заказов
+        function fetchOrders() {
+            fetch('/orders')
+                .then(res => res.json())
+                .then(orders => {
+                    const container = document.getElementById('orders-container');
+                    container.innerHTML = '';
+
+                    if (orders.length === 0) {
+                        container.innerHTML = '<div class="empty-orders">Нет свободных заказов в эфире. Создайте заказ выше!</div>';
+                        return;
+                    }
+
+                    orders.forEach(order => {
+                        const isAlreadyAcceptedByMe = order.status === 'accepted' || acceptedOrdersContacts[order.id];
+                        const card = document.createElement('div');
+                        card.className = `order-card ${isAlreadyAcceptedByMe ? 'accepted' : ''}`;
+                        
+                        let actionHtml = '';
+                        if (isAlreadyAcceptedByMe) {
+                            const contact = acceptedOrdersContacts[order.id] || order.passenger_phone;
+                            actionHtml = `<div class="phone-display">📞 Телефон: ${contact}</div>`;
+                        } else {
+                            actionHtml = `<button class="accept-btn" onclick="acceptOrder('${order.id}')">ПРИНЯТЬ ЗА 1 МАНАТ</button>`;
+                        }
+
+                        card.innerHTML = `
+                            <div class="order-header">
+                                <div>
+                                    <span style="font-size: 12px; color: var(--text-secondary);">Заказ #${order.id.split('_')[1]}</span>
+                                </div>
+                                <div class="price-tag">${order.price} TMT</div>
+                            </div>
+                            <div class="order-route">
+                                <div class="route-point">
+                                    <span class="dot from"></span>
+                                    <span>Откуда: <strong class="route-label">${order.from_location}</strong></span>
+                                </div>
+                                <div class="route-point">
+                                    <span class="dot to"></span>
+                                    <span>Куда: <strong class="route-label">${order.to_location}</strong></span>
+                                </div>
+                            </div>
+                            <div id="action-area-${order.id}">
+                                ${actionHtml}
+                            </div>
+                        `;
+                        container.appendChild(card);
+                    });
+                })
+                .catch(err => {
+                    console.error('Ошибка получения заказов:', err);
+                });
+        }
+
+        // Создать новый заказ пассажиром
+        function handleCreateOrder(event) {
+            event.preventDefault();
+            
+            const fromLocation = document.getElementById('from').value;
+            const toLocation = document.getElementById('to').value;
+            const price = parseFloat(document.getElementById('price').value);
+            const passengerPhone = document.getElementById('phone').value;
+
+            const requestData = {
+                from_location: fromLocation,
+                to_location: toLocation,
+                price: price,
+                passenger_phone: passengerPhone
+            };
+
+            fetch('/orders/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => { throw new Error(err.detail || 'Ошибка создания заказа') });
+                }
+                return res.json();
+            })
+            .then(data => {
+                showToast('Заказ успешно добавлен в ленту!', true);
+                document.getElementById('order-form').reset();
+                fetchOrders();
+            })
+            .catch(err => {
+                showToast(err.message, false);
+            });
+        }
+
+        // Принять заказ водителем
+        function acceptOrder(orderId) {
+            fetch(`/orders/${orderId}/accept`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    driver_id: currentDriverId
+                })
+            })
+            .then(res => {
+                if (!res.ok) {
+                    return res.json().then(err => { throw new Error(err.detail || 'Не удалось принять заказ') });
+                }
+                return res.json();
+            })
+            .then(data => {
+                showToast('Заказ принят! Списан 1 манат за контакт.', true);
+                
+                // Сохраняем полученный телефон пассажира
+                acceptedOrdersContacts[orderId] = data.passenger_phone;
+                
+                // Обновляем баланс в кэше и интерфейсе
+                const driver = driversList.find(d => d.id === currentDriverId);
+                if (driver) {
+                    driver.balance = data.driver_balance;
+                    updateBalanceUI();
+                }
+
+                // Перерисовываем ленту
+                fetchOrders();
+            })
+            .catch(err => {
+                showToast(err.message, false);
+            });
+        }
+
+        // Функция пополнения кошелька (+5 манатов для тестов)
+        function replenishWallet() {
+            fetch(`/drivers/${currentDriverId}/deposit?amount=5.00`, {
+                method: 'POST'
+            })
+            .then(res => res.json())
+            .then(data => {
+                showToast('Баланс пополнен на 5 манатов!', true);
+                fetchDrivers();
+            })
+            .catch(err => {
+                console.error(err);
+                showToast('Ошибка при пополнении баланса', false);
+            });
+        }
+    </script>
+</body>
+</html>
