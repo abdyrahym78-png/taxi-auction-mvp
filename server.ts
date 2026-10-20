@@ -6,6 +6,8 @@ interface Order {
   id: string;
   fromLocation: string;
   toLocation: string;
+  fromCoords?: [number, number]; // [lat, lng]
+  toCoords?: [number, number];   // [lat, lng]
   price: number;
   status: "active" | "accepted";
   passengerPhone: string;
@@ -20,26 +22,30 @@ interface Driver {
   rating: number;
 }
 
-// In-memory data store matching Python's dict behavior - FREE SERVICE
+// In-memory data store for direct client-driver matching in Turkmenistan
 let drivers: Driver[] = [
-  { id: "driver_1", name: "Аман (Aman)", totalRides: 0, rating: 5.0 },
-  { id: "driver_2", name: "Ресул (Resul)", totalRides: 0, rating: 4.8 }
+  { id: "driver_1", name: "Аман (Aman)", totalRides: 12, rating: 5.0 },
+  { id: "driver_2", name: "Ресул (Resul)", totalRides: 8, rating: 4.9 }
 ];
 
 let orders: Order[] = [
   {
     id: "order_1",
-    fromLocation: "Аэропорт Ашхабада",
-    toLocation: "ТЦ Беркарар",
-    price: 15.0,
+    fromLocation: "Ашхабад, Международный аэропорт",
+    toLocation: "Ашхабад, ТЦ Беркарар",
+    fromCoords: [37.9893, 58.3614],
+    toCoords: [37.9250, 58.3833],
+    price: 30.0,
     status: "active",
     passengerPhone: "+993 65 12-34-56"
   },
   {
     id: "order_2",
-    fromLocation: "Вокзал (Ашхабад)",
-    toLocation: "Рынок Толкучка (Алтын Асыр)",
-    price: 25.0,
+    fromLocation: "Марыйский велаят, город Мары (Центр)",
+    toLocation: "Марыйский велаят, Древний Мерв",
+    fromCoords: [37.5955, 61.8306],
+    toCoords: [37.6881, 62.1883],
+    price: 80.0,
     status: "active",
     passengerPhone: "+993 61 98-76-54"
   }
@@ -55,46 +61,23 @@ async function startServer() {
 
   // API Endpoints
   
-  // GET /api/orders - Get all active/free orders
+  // GET /api/orders - Get all active/accepted orders
   app.get("/api/orders", (req, res) => {
-    // Only return active orders or accepted ones (but hide phone for active unless accepted)
-    const sanitizedOrders = orders.map(order => {
-      if (order.status === "active") {
-        const { passengerPhone, ...rest } = order;
-        return { ...rest, passengerPhone: "Скрыт (Примите заказ за 1 TMT)" };
-      }
-      return order;
-    });
-    res.json(sanitizedOrders);
+    // Return orders (phone is visible upon direct connection, or for testing purposes)
+    res.json(orders);
   });
 
-  interface Driver {
-    id: string;
-    name: string;
-    totalRides: number;
-    rating: number;
-  }
-
-  // FREE DRIVERS SERVICE - Add driver rating display capability
+  // GET /api/drivers - Get drivers list
   app.get("/api/drivers", (req, res) => {
-    // Return driver profiles with ride statistics and ratings
-    const sanitizedDrivers = drivers.map(driver => {
-      return {
-        id: driver.id,
-        name: driver.name,
-        totalRides: driver.totalRides,
-        rating: driver.rating
-      };
-    });
-    res.json(sanitizedDrivers);
+    res.json(drivers);
   });
 
-  // POST /api/orders/create - Create an order
+  // POST /api/orders/create - Create an order with optional coordinates
   app.post("/api/orders/create", (req, res) => {
-    const { fromLocation, toLocation, price, passengerPhone } = req.body;
+    const { fromLocation, toLocation, fromCoords, toCoords, price, passengerPhone } = req.body;
     
     if (!fromLocation || !toLocation || !price || !passengerPhone) {
-      return res.status(400).json({ error: "Все поля (Откуда, Куда, Цена, Телефон) обязательны" });
+      return res.status(400).json({ error: "Все обязательные поля (Откуда, Куда, Цена, Телефон) должны быть заполнены" });
     }
 
     const numericPrice = parseFloat(price);
@@ -106,6 +89,8 @@ async function startServer() {
       id: `order_${orderCounter++}`,
       fromLocation,
       toLocation,
+      fromCoords: fromCoords || undefined,
+      toCoords: toCoords || undefined,
       price: numericPrice,
       status: "active",
       passengerPhone
@@ -115,7 +100,7 @@ async function startServer() {
     res.status(201).json(newOrder);
   });
 
-  // POST /api/drivers/:id/accept - Accept order by driver (FREE SERVICE - NO COMMISSION)
+  // POST /api/orders/:id/accept - Direct connect between driver and passenger (100% Free)
   app.post("/api/orders/:id/accept", (req, res) => {
     const { id } = req.params;
     const { driverId } = req.body;
@@ -134,18 +119,16 @@ async function startServer() {
       return res.status(400).json({ error: "Этот заказ уже принят другим водителем" });
     }
 
-    // FREE SERVICE - NO COMMISSIONS, NO BALANCE REQUIREMENTS
+    // Direct linking: free of charge, no commission or balance check
     driver.totalRides += 1;
-    // Simulate rating improvement based on performance
-    driver.rating = Math.min(5.0, driver.rating + 0.1);
+    driver.rating = Math.min(5.0, Number((driver.rating + 0.05).toFixed(2)));
     order.status = "accepted";
     order.acceptedBy = driver.id;
     order.acceptedAt = Date.now();
 
-    // Return successfully accepted order containing passenger's real phone number
     res.json({
       success: true,
-      message: "Заказ успешно принят! Бесплатно и без комиссий.",
+      message: `Прямая связь установлена! Водитель ${driver.name} связался с пассажиром.`,
       driverRides: driver.totalRides,
       driverRating: driver.rating,
       passengerPhone: order.passengerPhone,
@@ -153,47 +136,30 @@ async function startServer() {
     });
   });
 
-  // POST /api/drivers/:id/deposit - Helper to replenish a driver's balance for easy testing
-// FREE SERVICE - NO DEPOSIT NEEDED
-  app.post("/api/drivers/:id/deposit", (req, res) => {
-    const { id } = req.params;
-    const { amount } = req.body;
-
-    const driver = drivers.find(d => d.id === id);
-    if (!driver) {
-      return res.status(404).json({ error: "Водитель не найден" });
-    }
-
-    const numericAmount = parseFloat(amount);
-    if (isNaN(numericAmount) || numericAmount <= 0) {
-      return res.status(400).json({ error: "Укажите корректную сумму пополнения" });
-    }
-
-    // FREE SERVICE - This endpoint still exists for backwards compatibility but does nothing
-    // Drivers don't need to recharge for the service
-    res.json({ success: true, message: `Услуга бесплатная! Никаких пополнений не требуется. Водитель ${driver.name} может принимать заказы бесплатно.`, driver: driver });
-  });
-
-  // POST /api/reset - Reset everything back to original state
+  // POST /api/reset - Reset demo data
   app.post("/api/reset", (req, res) => {
     drivers = [
-      { id: "driver_1", name: "Аман (Aman)", balance: 10.0 },
-      { id: "driver_2", name: "Ресул (Resul)", balance: 0.5 }
+      { id: "driver_1", name: "Аман (Aman)", totalRides: 12, rating: 5.0 },
+      { id: "driver_2", name: "Ресул (Resul)", totalRides: 8, rating: 4.9 }
     ];
     orders = [
       {
         id: "order_1",
-        fromLocation: "Аэропорт Ашхабада",
-        toLocation: "ТЦ Беркарар",
-        price: 15.0,
+        fromLocation: "Ашхабад, Международный аэропорт",
+        toLocation: "Ашхабад, ТЦ Беркарар",
+        fromCoords: [37.9893, 58.3614],
+        toCoords: [37.9250, 58.3833],
+        price: 30.0,
         status: "active",
         passengerPhone: "+993 65 12-34-56"
       },
       {
         id: "order_2",
-        fromLocation: "Вокзал (Ашхабад)",
-        toLocation: "Рынок Толкучка (Алтын Асыр)",
-        price: 25.0,
+        fromLocation: "Марыйский велаят, город Мары (Центр)",
+        toLocation: "Марыйский велаят, Древний Мерв",
+        fromCoords: [37.5955, 61.8306],
+        toCoords: [37.6881, 62.1883],
+        price: 80.0,
         status: "active",
         passengerPhone: "+993 61 98-76-54"
       }

@@ -1,24 +1,28 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { 
   MapPin, 
   Navigation, 
-  DollarSign, 
   Phone, 
   User, 
-  Wallet, 
   RefreshCw, 
   AlertCircle, 
   CheckCircle, 
   Plus, 
   Trash2, 
   Car, 
-  Info 
+  Info,
+  Map as MapIcon,
+  Search,
+  Check
 } from "lucide-react";
+import L from "leaflet";
 
 interface Order {
   id: string;
   fromLocation: string;
   toLocation: string;
+  fromCoords?: [number, number]; // [lat, lng]
+  toCoords?: [number, number];   // [lat, lng]
   price: number;
   status: "active" | "accepted";
   passengerPhone: string;
@@ -28,7 +32,8 @@ interface Order {
 interface Driver {
   id: string;
   name: string;
-  balance: number;
+  totalRides: number;
+  rating: number;
 }
 
 interface Toast {
@@ -37,23 +42,44 @@ interface Toast {
   id: number;
 }
 
+// Turkmenistan regions preset for quick selection
+const TURKMENISTAN_REGIONS = [
+  { name: "Ашхабад (Столица)", center: [37.9601, 58.3261] as [number, number], zoom: 12 },
+  { name: "Аркадаг (Новый город)", center: [38.0500, 58.1000] as [number, number], zoom: 13 },
+  { name: "Ахалский велаят (Анау/Бахарден)", center: [37.9000, 58.5000] as [number, number], zoom: 9 },
+  { name: "Марыйский велаят (Мары/Мерв)", center: [37.5955, 61.8306] as [number, number], zoom: 10 },
+  { name: "Лебапский велаят (Туркменабат)", center: [39.0855, 63.5786] as [number, number], zoom: 10 },
+  { name: "Дашогузский велаят (Дашогуз)", center: [41.8368, 59.9666] as [number, number], zoom: 10 },
+  { name: "Балканский велаят (Туркменбаши/Балканабат)", center: [39.5122, 54.3644] as [number, number], zoom: 9 },
+];
+
 export default function App() {
-  // State
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>("driver_1");
+  
+  // Order form state
   const [fromLocation, setFromLocation] = useState<string>("");
   const [toLocation, setToLocation] = useState<string>("");
+  const [fromCoords, setFromCoords] = useState<[number, number] | null>(null);
+  const [toCoords, setToCoords] = useState<[number, number] | null>(null);
   const [price, setPrice] = useState<string>("");
   const [passengerPhone, setPassengerPhone] = useState<string>("");
+  
+  // Selection mode on map: 'from' or 'to' or null
+  const [mapSelectingMode, setMapSelectingMode] = useState<"from" | "to" | null>("from");
+  const [selectedRegionIndex, setSelectedRegionIndex] = useState<number>(0);
+  
   const [loading, setLoading] = useState<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-
-  // Keep track of accepted orders contact phone numbers revealed during this session
   const [revealedPhones, setRevealedPhones] = useState<Record<string, string>>({});
 
-  // Show Toast helper
+  // Leaflet map refs
+  const mapRef = useRef<HTMLDivElement | null>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.LayerGroup | null>(null);
+
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     const id = Date.now() + Math.random();
     setToasts((prev) => [...prev, { message, type, id }]);
@@ -62,7 +88,6 @@ export default function App() {
     }, 4000);
   };
 
-  // Fetch Drivers and Balance
   const fetchDrivers = async () => {
     try {
       const res = await fetch("/api/drivers");
@@ -75,7 +100,6 @@ export default function App() {
     }
   };
 
-  // Fetch Orders
   const fetchOrders = async (showNotification = false) => {
     setRefreshing(true);
     try {
@@ -94,7 +118,6 @@ export default function App() {
     }
   };
 
-  // Run on mount and poll every 4 seconds
   useEffect(() => {
     fetchDrivers();
     fetchOrders();
@@ -107,14 +130,133 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Find active driver details
+  // Initialize Leaflet Map
+  useEffect(() => {
+    if (!mapRef.current) return;
+    if (!mapInstanceRef.current) {
+      // Center on Turkmenistan (Ashgabat default)
+      const map = L.map(mapRef.current, {
+        center: [37.9601, 58.3261],
+        zoom: 12,
+        zoomControl: false,
+      });
+
+      L.control.zoom({ position: "bottomright" }).addTo(map);
+
+      // OpenStreetMap Free Tile Layer
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: 19,
+      }).addTo(map);
+
+      // Layer group for dynamic markers
+      const markerGroup = L.layerGroup().addTo(map);
+      markersRef.current = markerGroup;
+
+      // Click on map listener to pick coordinates
+      map.on("click", (e: L.LeafletMouseEvent) => {
+        const { lat, lng } = e.latlng;
+        // We capture lat, lng and reverse-geocode simulation or placeholder description
+        const latStr = lat.toFixed(4);
+        const lngStr = lng.toFixed(4);
+        const pointDesc = `Координаты [${latStr}, ${lngStr}]`;
+
+        // Check active selection mode
+        if (mapSelectingMode === "from") {
+          setFromCoords([lat, lng]);
+          setFromLocation(pointDesc);
+          showToast("Пункт А (Откуда) выбран на карте!", "success");
+          setMapSelectingMode("to"); // Automatically switch to selecting point B
+        } else if (mapSelectingMode === "to") {
+          setToCoords([lat, lng]);
+          setToLocation(pointDesc);
+          showToast("Пункт Б (Куда) выбран на карте!", "success");
+          setMapSelectingMode(null); // Finish selection
+        } else {
+          // Default fallback if no mode selected: set as Point A
+          setFromCoords([lat, lng]);
+          setFromLocation(pointDesc);
+          showToast("Пункт А (Откуда) установлен!", "success");
+          setMapSelectingMode("to");
+        }
+      });
+
+      mapInstanceRef.current = map;
+    }
+
+    return () => {
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+    };
+  }, []);
+
+  // Update map markers whenever fromCoords, toCoords, or orders change
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    const markerGroup = markersRef.current;
+    if (!map || !markerGroup) return;
+
+    markerGroup.clearLayers();
+
+    // Custom Icon helper
+    const createCustomPin = (label: string, color: string) => {
+      return L.divIcon({
+        className: "custom-leaflet-pin",
+        html: `<div style="background-color: ${color}; color: black; font-weight: 900; font-size: 11px; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">${label}</div>`,
+        iconSize: [26, 26],
+        iconAnchor: [13, 13],
+      });
+    };
+
+    // Add Point A marker if selected
+    if (fromCoords) {
+      L.marker(fromCoords, {
+        icon: createCustomPin("А", "#fbbf24"),
+      })
+        .addTo(markerGroup)
+        .bindPopup(`<b>Пункт А (Откуда)</b><br/>${fromLocation}`);
+    }
+
+    // Add Point B marker if selected
+    if (toCoords) {
+      L.marker(toCoords, {
+        icon: createCustomPin("Б", "#10b981"),
+      })
+        .addTo(markerGroup)
+        .bindPopup(`<b>Пункт Б (Куда)</b><br/>${toLocation}`);
+    }
+
+    // Also plot active orders on the map if they have coordinates
+    orders.forEach((ord) => {
+      if (ord.fromCoords) {
+        L.marker(ord.fromCoords, {
+          icon: createCustomPin("🚗", "#3b82f6"),
+        })
+          .addTo(markerGroup)
+          .bindPopup(`<b>Заказ #${ord.id.replace("order_", "")}</b><br/>Откуда: ${ord.fromLocation}<br/>Куда: ${ord.toLocation}<br/>Цена: <b>${ord.price} TMT</b>`);
+      }
+    });
+  }, [fromCoords, toCoords, fromLocation, toLocation, orders]);
+
+  // Handle region switch from dropdown
+  const handleRegionChange = (index: number) => {
+    setSelectedRegionIndex(index);
+    const region = TURKMENISTAN_REGIONS[index];
+    if (mapInstanceRef.current && region) {
+      mapInstanceRef.current.setView(region.center, region.zoom);
+      showToast(`Карта перемещена: ${region.name}`, "info");
+    }
+  };
+
   const activeDriver = drivers.find((d) => d.id === selectedDriverId) || {
     id: "driver_1",
     name: "Аман (Aman)",
-    balance: 10.0,
+    totalRides: 12,
+    rating: 5.0,
   };
 
-  // Handle order creation
   const handleCreateOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fromLocation.trim() || !toLocation.trim() || !price || !passengerPhone.trim()) {
@@ -136,15 +278,19 @@ export default function App() {
         body: JSON.stringify({
           fromLocation,
           toLocation,
+          fromCoords,
+          toCoords,
           price: numericPrice,
           passengerPhone,
         }),
       });
 
       if (res.ok) {
-        showToast("Заказ успешно опубликован в эфире!", "success");
+        showToast("Заказ успешно опубликован в прямом эфире!", "success");
         setFromLocation("");
         setToLocation("");
+        setFromCoords(null);
+        setToCoords(null);
         setPrice("");
         setPassengerPhone("");
         fetchOrders();
@@ -159,7 +305,7 @@ export default function App() {
     }
   };
 
-  // Handle Order Acceptance
+  // Direct connection acceptance (100% Free, no commission)
   const handleAcceptOrder = async (orderId: string) => {
     try {
       const res = await fetch(`/api/orders/${orderId}/accept`, {
@@ -170,51 +316,29 @@ export default function App() {
 
       const data = await res.json();
       if (res.ok) {
-        showToast("Заказ принят! Комиссия 1.00 TMT списана.", "success");
-        // Store revealed phone locally
+        showToast("Связь установлена! Телефон пассажира открыт бесплатно.", "success");
         setRevealedPhones((prev) => ({
           ...prev,
           [orderId]: data.passengerPhone,
         }));
-        // Reload statuses
         fetchDrivers();
         fetchOrders();
       } else {
         showToast(data.error || "Не удалось принять заказ", "error");
       }
     } catch (err) {
-      showToast("Ошибка сети при принятии заказа", "error");
+      showToast("Ошибка сети при установке связи", "error");
     }
   };
 
-  // Handle simulated wallet replenishment
-  const handleDeposit = async () => {
-    try {
-      const res = await fetch(`/api/drivers/${selectedDriverId}/deposit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: 5.0 }),
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        showToast("Кошелек успешно пополнен на +5.00 TMT!", "success");
-        fetchDrivers();
-      } else {
-        showToast(data.error || "Не удалось пополнить счет", "error");
-      }
-    } catch (err) {
-      showToast("Ошибка при пополнении счета", "error");
-    }
-  };
-
-  // Reset database back to default state
   const handleResetSystem = async () => {
     try {
       const res = await fetch("/api/reset", { method: "POST" });
       if (res.ok) {
         showToast("Данные успешно сброшены в исходное состояние", "info");
         setRevealedPhones({});
+        setFromCoords(null);
+        setToCoords(null);
         fetchDrivers();
         fetchOrders();
       } else {
@@ -227,7 +351,6 @@ export default function App() {
 
   return (
     <div id="app-root" className="min-h-screen bg-[#09090b] text-[#fafafa] font-sans antialiased p-4 md:p-6 lg:p-8 flex flex-col justify-between">
-      {/* Container with Max Width for Desktop / Fluid layout */}
       <div className="max-w-7xl w-full mx-auto space-y-6 flex-grow">
         
         {/* HEADER BENTO CARD */}
@@ -236,24 +359,23 @@ export default function App() {
           
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 bg-[#fbbf24] rounded-xl flex items-center justify-center text-black font-black text-2xl shadow-lg shadow-[#fbbf24]/20">
-              X
+              TM
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">SAYT X TAXI</h1>
                 <span className="text-[10px] bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  Auction MVP
+                  Прямая связь • 100% Бесплатно
                 </span>
               </div>
               <p className="text-xs text-[#a1a1aa] mt-0.5">
-                Модель такси-аукциона InDrive с фиксированной платой за контакт
+                Прямое связывание пассажира и водителя по всему Туркменистану без комиссий и балансов
               </p>
             </div>
           </div>
 
-          {/* Test Driver Switcher & Balance Area */}
+          {/* Test Driver Switcher & Stats */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
-            {/* Driver Profile Switcher */}
             <div className="bg-[#27272a] p-1.5 rounded-xl border border-white/5 flex gap-1">
               <button
                 id="btn-switch-aman"
@@ -265,7 +387,7 @@ export default function App() {
                 }`}
               >
                 <User size={14} />
-                Аман
+                Аман (⭐ 5.0)
               </button>
               <button
                 id="btn-switch-resul"
@@ -277,103 +399,175 @@ export default function App() {
                 }`}
               >
                 <User size={14} />
-                Ресул (0.5 TMT)
+                Ресул (⭐ 4.9)
               </button>
             </div>
 
-            {/* Wallet Info Display */}
             <div className="bg-[#fbbf24]/10 border border-[#fbbf24]/30 rounded-xl p-2 px-4 flex items-center justify-between sm:justify-start gap-4 shadow-inner min-w-[200px]">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-[#fbbf24]/20 flex items-center justify-center text-[#fbbf24]">
-                  <Wallet size={16} />
+                  <Car size={16} />
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase text-[#fbbf24] font-bold tracking-wider">Баланс</div>
+                  <div className="text-[10px] uppercase text-[#fbbf24] font-bold tracking-wider">Рейсы водителя</div>
                   <div className="text-base font-black tracking-tight text-white tabular-nums">
-                    {activeDriver.balance.toFixed(2)} TMT
+                    {activeDriver.totalRides} поездок (Бесплатно)
                   </div>
                 </div>
               </div>
-              <button 
-                id="btn-deposit"
-                onClick={handleDeposit}
-                className="bg-[#fbbf24] hover:bg-[#fbbf24]/90 text-black text-xs font-extrabold px-2.5 py-1.5 rounded-lg shadow-sm transition-transform active:scale-95 flex items-center gap-1 cursor-pointer"
-                title="Пополнить баланс на +5.00 TMT для тестов"
-              >
-                <Plus size={12} />
-                +5 TMT
-              </button>
             </div>
           </div>
         </header>
 
-        {/* BENTO GRID CONTENT SECTION */}
+        {/* MAP & LOCATION SELECTOR BENTO ROW */}
+        <section className="bg-[#18181b] border border-white/10 rounded-2xl p-5 md:p-6 space-y-4 shadow-xl relative overflow-hidden">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-6 bg-[#fbbf24] rounded-full"></div>
+              <div>
+                <h2 className="text-lg font-bold tracking-tight">Карта Туркменистана (OpenStreetMap)</h2>
+                <p className="text-xs text-[#a1a1aa]">
+                  Выберите велаят или кликните прямо на карту для установки точки А (Откуда) и точки Б (Куда)
+                </p>
+              </div>
+            </div>
+
+            {/* Region Switcher Dropdown & Selection Mode Indicators */}
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={selectedRegionIndex}
+                onChange={(e) => handleRegionChange(Number(e.target.value))}
+                className="bg-[#27272a] border border-[#3f3f46] text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-[#fbbf24]"
+              >
+                {TURKMENISTAN_REGIONS.map((reg, idx) => (
+                  <option key={idx} value={idx}>
+                    📍 {reg.name}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex items-center bg-[#27272a] p-1 rounded-xl border border-white/5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setMapSelectingMode("from")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
+                    mapSelectingMode === "from"
+                      ? "bg-[#fbbf24] text-black shadow"
+                      : "text-[#a1a1aa] hover:text-white"
+                  }`}
+                >
+                  <MapPin size={12} />
+                  Точка А {fromCoords ? "✓" : ""}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMapSelectingMode("to")}
+                  className={`px-3 py-1.5 rounded-lg font-bold transition-all flex items-center gap-1 ${
+                    mapSelectingMode === "to"
+                      ? "bg-[#10b981] text-white shadow"
+                      : "text-[#a1a1aa] hover:text-white"
+                  }`}
+                >
+                  <Navigation size={12} />
+                  Точка Б {toCoords ? "✓" : ""}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Leaflet Map Container */}
+          <div className="relative w-full h-[360px] md:h-[420px] rounded-xl overflow-hidden border border-white/10 shadow-inner">
+            <div ref={mapRef} className="w-full h-full z-10" />
+            
+            {/* Floating helper banner on map */}
+            <div className="absolute top-3 left-3 z-20 bg-black/80 backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg">
+              <span className="w-2.5 h-2.5 rounded-full animate-ping bg-[#fbbf24]"></span>
+              <span className="font-semibold text-white">
+                Режим выбора: <strong className="text-[#fbbf24] uppercase">{mapSelectingMode === "from" ? "Пункт А (Откуда)" : mapSelectingMode === "to" ? "Пункт Б (Куда)" : "Просмотр"}</strong>. Кликните на карту.
+              </span>
+            </div>
+          </div>
+        </section>
+
+        {/* BENTO GRID: CREATE ORDER & LIVE FEED */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* SIDEBAR BENTO PANE: Passenger (Create Order) */}
-          <aside id="bento-passenger-pane" className="lg:col-span-4 bg-[#18181b] border border-white/10 rounded-2xl p-5 md:p-6 flex flex-col justify-between space-y-6 relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-32 h-32 bg-[#fbbf24]/2 rounded-full filter blur-xl pointer-events-none"></div>
-            
+          {/* SIDEBAR PANE: Create Order */}
+          <aside className="lg:col-span-4 bg-[#18181b] border border-white/10 rounded-2xl p-5 md:p-6 flex flex-col justify-between space-y-6">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-[#fbbf24] rounded-full"></div>
-                <h2 className="text-lg font-bold tracking-tight">Создать заказ пассажиром</h2>
+                <h2 className="text-lg font-bold tracking-tight">Создать заказ</h2>
               </div>
               <p className="text-xs text-[#a1a1aa]">
-                Введите пункты поездки, предлагаемую цену и номер телефона. Водители увидят заказ в реальном времени.
+                Заполните пункты маршрута (или выберите на карте), цену в манатах и телефон для прямой связи.
               </p>
               
               <form onSubmit={handleCreateOrder} className="space-y-4 pt-2">
                 {/* Point A */}
                 <div className="space-y-1.5">
-                  <label htmlFor="from" className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                    <MapPin size={12} className="text-[#fbbf24]" />
-                    Откуда (Пункт А)
+                  <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <MapPin size={12} className="text-[#fbbf24]" />
+                      Откуда (Пункт А)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMapSelectingMode("from")}
+                      className="text-[10px] text-[#fbbf24] hover:underline"
+                    >
+                      Выбрать на карте
+                    </button>
                   </label>
                   <input
-                    id="from"
                     type="text"
                     value={fromLocation}
                     onChange={(e) => setFromLocation(e.target.value)}
-                    placeholder="Например: Аэропорт Ашхабада"
-                    className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/30 transition-all duration-200"
+                    placeholder="Например: Ашхабад, ТЦ Беркарар"
+                    className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24]"
                     required
                   />
                 </div>
 
                 {/* Point B */}
                 <div className="space-y-1.5">
-                  <label htmlFor="to" className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                    <Navigation size={12} className="text-[#fbbf24]" />
-                    Куда (Пункт Б)
+                  <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Navigation size={12} className="text-[#10b981]" />
+                      Куда (Пункт Б)
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setMapSelectingMode("to")}
+                      className="text-[10px] text-[#10b981] hover:underline"
+                    >
+                      Выбрать на карте
+                    </button>
                   </label>
                   <input
-                    id="to"
                     type="text"
                     value={toLocation}
                     onChange={(e) => setToLocation(e.target.value)}
-                    placeholder="Например: ТЦ Беркарар"
-                    className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/30 transition-all duration-200"
+                    placeholder="Например: Аэропорт Ашхабада"
+                    className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#10b981]"
                     required
                   />
                 </div>
 
-                {/* Price offering */}
+                {/* Price */}
                 <div className="space-y-1.5">
-                  <label htmlFor="price" className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                    <DollarSign size={12} className="text-[#fbbf24]" />
-                    Предлагаемая цена (TMT)
+                  <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                    Цена поездки (TMT)
                   </label>
                   <div className="relative">
                     <input
-                      id="price"
                       type="number"
                       value={price}
                       onChange={(e) => setPrice(e.target.value)}
-                      placeholder="Например: 15"
+                      placeholder="Например: 35"
                       min="1"
-                      step="0.5"
-                      className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/30 transition-all duration-200"
+                      step="1"
+                      className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl pl-4 pr-12 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24]"
                       required
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-[#fbbf24]">
@@ -382,54 +576,44 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Passenger Telephone */}
+                {/* Phone */}
                 <div className="space-y-1.5">
-                  <label htmlFor="phone" className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
+                  <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
                     <Phone size={12} className="text-[#fbbf24]" />
                     Телефон пассажира
                   </label>
                   <input
-                    id="phone"
                     type="tel"
                     value={passengerPhone}
                     onChange={(e) => setPassengerPhone(e.target.value)}
-                    placeholder="Например: +993 65 12-34-56"
-                    className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24] focus:ring-1 focus:ring-[#fbbf24]/30 transition-all duration-200"
+                    placeholder="+993 65 12-34-56"
+                    className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24]"
                     required
                   />
                 </div>
 
                 <button
-                  id="btn-submit-order"
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-[#fbbf24] hover:bg-[#fbbf24]/90 disabled:opacity-50 text-black font-extrabold py-3.5 px-4 rounded-xl shadow-lg hover:shadow-[#fbbf24]/10 transition-all active:scale-[0.98] text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-4"
+                  className="w-full bg-[#fbbf24] hover:bg-[#fbbf24]/90 disabled:opacity-50 text-black font-extrabold py-3.5 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-4"
                 >
-                  {loading ? (
-                    <RefreshCw size={16} className="animate-spin" />
-                  ) : (
-                    <Plus size={16} />
-                  )}
+                  {loading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
                   Опубликовать заказ
                 </button>
               </form>
             </div>
 
-            {/* Lower info block with system helper */}
             <div className="border-t border-white/5 pt-4 space-y-3">
               <div className="flex gap-2.5 items-start text-xs text-[#a1a1aa] bg-white/2 p-3 rounded-xl border border-white/5">
                 <Info size={16} className="text-[#fbbf24] shrink-0 mt-0.5" />
                 <p>
-                  Пассажир не платит комиссию. С водителя списывается ровно <strong>1.00 TMT</strong> за принятие заказа (плата за контакт).
+                  Все финансовые модули, балансы и комиссии полностью удалены. Прямая связь пассажира и водителя бесплатна.
                 </p>
               </div>
 
-              {/* Reset simulator state */}
               <button
-                id="btn-reset-system"
                 onClick={handleResetSystem}
                 className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-2.5 px-4 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                title="Сбросить все данные к исходным значениям"
               >
                 <Trash2 size={13} />
                 Сбросить демонстрационные данные
@@ -437,26 +621,24 @@ export default function App() {
             </div>
           </aside>
 
-          {/* MAIN BENTO PANE: Live Orders Feed */}
-          <main id="bento-driver-pane" className="lg:col-span-8 bg-[#18181b] border border-white/10 rounded-2xl p-5 md:p-6 flex flex-col space-y-4">
-            
+          {/* MAIN PANE: Live Orders Feed */}
+          <main className="lg:col-span-8 bg-[#18181b] border border-white/10 rounded-2xl p-5 md:p-6 flex flex-col space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/5 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-6 bg-[#fbbf24] rounded-full"></div>
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">Живой эфир заказов</h2>
+                  <h2 className="text-lg font-bold tracking-tight">Эфир заказов Туркменистана</h2>
                   <p className="text-xs text-[#a1a1aa]">
-                    Показаны только активные заказы. Выберите водителя выше для симуляции списания.
+                    Прямая связь между клиентом и водителями по всей стране
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 self-end sm:self-auto">
                 <span className="text-xs bg-[#27272a] text-[#a1a1aa] px-3 py-1.5 rounded-lg border border-white/5 font-semibold">
-                  {orders.length} заказов в базе
+                  {orders.length} активных
                 </span>
                 <button
-                  id="btn-refresh"
                   onClick={() => fetchOrders(true)}
                   disabled={refreshing}
                   className="bg-[#27272a] hover:bg-[#3f3f46] text-[#fafafa] border border-[#3f3f46] p-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer"
@@ -467,66 +649,53 @@ export default function App() {
               </div>
             </div>
 
-            {/* Orders Feed Cards Container */}
             <div className="flex-grow">
               {orders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-3 bg-[#27272a]/10 rounded-2xl border border-dashed border-white/5">
                   <Car size={40} className="text-[#a1a1aa] opacity-40 animate-pulse" />
-                  <div className="text-sm font-semibold text-white">В данный момент нет свободных заказов</div>
+                  <div className="text-sm font-semibold text-white">Нет активных заказов</div>
                   <p className="text-xs text-[#a1a1aa] max-w-sm">
-                    Создайте новый заказ, используя форму слева, чтобы он мгновенно появился в живой ленте!
+                    Создайте заказ слева или выберите точку на карте Туркменистана.
                   </p>
                 </div>
               ) : (
-                <div id="orders-list-grid" className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {orders.map((order) => {
                     const isRevealed = !!revealedPhones[order.id];
-                    const isAcceptedByMe = order.status === "accepted" || isRevealed;
+                    const isAccepted = order.status === "accepted" || isRevealed;
 
                     return (
                       <div
                         key={order.id}
-                        className={`group relative overflow-hidden rounded-2xl border p-5 flex flex-col justify-between transition-all duration-200 ${
-                          isAcceptedByMe
-                            ? "bg-[#10b981]/5 border-[#10b981]/40 shadow-lg shadow-[#10b981]/5"
-                            : "bg-[#18181b] border-white/5 hover:border-[#fbbf24]/50 hover:bg-white/[0.01]"
+                        className={`relative overflow-hidden rounded-2xl border p-5 flex flex-col justify-between transition-all duration-200 ${
+                          isAccepted
+                            ? "bg-[#10b981]/5 border-[#10b981]/40 shadow-lg"
+                            : "bg-[#18181b] border-white/5 hover:border-[#fbbf24]/50"
                         }`}
                       >
-                        {/* Background subtle glowing indicators */}
-                        {isAcceptedByMe ? (
-                          <div className="absolute -top-12 -right-12 w-24 h-24 bg-[#10b981]/10 rounded-full filter blur-xl pointer-events-none"></div>
-                        ) : (
-                          <div className="absolute -top-12 -right-12 w-24 h-24 bg-[#fbbf24]/5 rounded-full filter blur-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-                        )}
-
                         <div className="space-y-4">
-                          {/* Order Metadata / Header */}
                           <div className="flex justify-between items-start">
                             <div>
                               <span className="text-[10px] text-[#a1a1aa] uppercase font-bold tracking-widest block mb-0.5">
                                 Заказ #{order.id.replace("order_", "")}
                               </span>
                               <div className="flex items-center gap-1.5">
-                                <span className={`w-2 h-2 rounded-full ${isAcceptedByMe ? "bg-[#10b981] animate-ping" : "bg-[#fbbf24] animate-pulse"}`}></span>
-                                <span className={`text-xs font-bold uppercase tracking-wide ${isAcceptedByMe ? "text-[#10b981]" : "text-[#fbbf24]"}`}>
-                                  {isAcceptedByMe ? "Заказ получен" : "Ищет водителя"}
+                                <span className={`w-2 h-2 rounded-full ${isAccepted ? "bg-[#10b981]" : "bg-[#fbbf24] animate-pulse"}`}></span>
+                                <span className={`text-xs font-bold uppercase tracking-wide ${isAccepted ? "text-[#10b981]" : "text-[#fbbf24]"}`}>
+                                  {isAccepted ? "Связь установлена" : "Ищет водителя"}
                                 </span>
                               </div>
                             </div>
 
-                            {/* Price Badge */}
                             <div className="bg-[#fbbf24]/15 border border-[#fbbf24]/30 px-3 py-1.5 rounded-xl flex items-baseline gap-1 shadow-inner">
                               <span className="text-xl font-black text-[#fbbf24] tracking-tight">{order.price}</span>
                               <span className="text-[10px] text-[#fbbf24] font-bold">TMT</span>
                             </div>
                           </div>
 
-                          {/* Route Details with connector lines */}
                           <div className="relative pl-6 space-y-4 py-1">
-                            {/* Route decorative connector line */}
                             <div className="absolute left-[7px] top-[14px] bottom-[14px] w-[2px] border-l border-dashed border-white/10"></div>
                             
-                            {/* Point A */}
                             <div className="relative">
                               <span className="absolute left-[-23px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#27272a] border border-[#fbbf24]/60 flex items-center justify-center text-[8px] text-[#fbbf24] font-black">
                                 А
@@ -535,7 +704,6 @@ export default function App() {
                               <p className="text-sm font-semibold text-white line-clamp-1">{order.fromLocation}</p>
                             </div>
 
-                            {/* Point B */}
                             <div className="relative">
                               <span className="absolute left-[-23px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#27272a] border border-[#10b981]/60 flex items-center justify-center text-[8px] text-[#10b981] font-black">
                                 Б
@@ -546,12 +714,11 @@ export default function App() {
                           </div>
                         </div>
 
-                        {/* Order action button or phone display */}
                         <div className="mt-5 pt-3 border-t border-white/5">
-                          {isAcceptedByMe ? (
+                          {isAccepted ? (
                             <div className="space-y-2">
                               <div className="text-[10px] font-bold uppercase text-[#10b981] tracking-wider text-center">
-                                Контактные данные открыты
+                                Прямая связь (Без комиссий)
                               </div>
                               <div className="bg-[#10b981]/10 border border-[#10b981]/20 rounded-xl p-3 flex items-center justify-between shadow-inner">
                                 <div className="flex items-center gap-2">
@@ -573,9 +740,9 @@ export default function App() {
                               onClick={() => handleAcceptOrder(order.id)}
                               className="w-full bg-[#27272a] hover:bg-[#fbbf24] hover:text-black border border-white/5 hover:border-transparent text-white font-bold py-3 px-4 rounded-xl flex items-center justify-between transition-all duration-200 cursor-pointer active:scale-[0.98]"
                             >
-                              <span className="text-xs uppercase tracking-wider">Принять за контакт</span>
-                              <span className="text-xs bg-[#fbbf24]/10 group-hover:bg-black/10 px-2 py-0.5 rounded-md border border-white/5 font-extrabold text-[#fbbf24] group-hover:text-black">
-                                -1.00 TMT
+                              <span className="text-xs uppercase tracking-wider">Связаться с пассажиром</span>
+                              <span className="text-xs bg-[#10b981]/20 px-2 py-0.5 rounded-md font-extrabold text-[#4ade80]">
+                                Бесплатно
                               </span>
                             </button>
                           )}
@@ -590,19 +757,18 @@ export default function App() {
         </div>
       </div>
 
-      {/* FOOTER */}
       <footer className="max-w-7xl w-full mx-auto mt-8 pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#a1a1aa]">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 bg-[#fbbf24] rounded-full"></span>
-          <span>Новостной портал "Сайт Х" — Демонстрационный MVP такси-аукциона</span>
+          <span>SAYT X TAXI — Прямое связывание клиента и водителя по всему Туркменистану</span>
         </div>
         <div className="flex items-center gap-4">
-          <span>Среда тестирования</span>
-          <span>Баланс водителя изменяется в реальном времени</span>
+          <span>Leaflet + OpenStreetMap</span>
+          <span>Без комиссий и кошельков</span>
         </div>
       </footer>
 
-      {/* TOASTS NOTIFICATIONS CONTAINER */}
+      {/* TOASTS CONTAINER */}
       <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none">
         {toasts.map((toast) => (
           <div
