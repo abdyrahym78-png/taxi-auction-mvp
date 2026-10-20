@@ -10,18 +10,20 @@ interface Order {
   status: "active" | "accepted";
   passengerPhone: string;
   acceptedBy?: string; // Driver ID
+  acceptedAt?: number; // Timestamp
 }
 
 interface Driver {
   id: string;
   name: string;
-  balance: number;
+  totalRides: number;
+  rating: number;
 }
 
-// In-memory data store matching Python's dict behavior
+// In-memory data store matching Python's dict behavior - FREE SERVICE
 let drivers: Driver[] = [
-  { id: "driver_1", name: "Аман (Aman)", balance: 10.0 },
-  { id: "driver_2", name: "Ресул (Resul)", balance: 0.5 }
+  { id: "driver_1", name: "Аман (Aman)", totalRides: 0, rating: 5.0 },
+  { id: "driver_2", name: "Ресул (Resul)", totalRides: 0, rating: 4.8 }
 ];
 
 let orders: Order[] = [
@@ -66,9 +68,25 @@ async function startServer() {
     res.json(sanitizedOrders);
   });
 
-  // GET /api/drivers - Helper endpoint to get driver profiles and balances
+  interface Driver {
+    id: string;
+    name: string;
+    totalRides: number;
+    rating: number;
+  }
+
+  // FREE DRIVERS SERVICE - Add driver rating display capability
   app.get("/api/drivers", (req, res) => {
-    res.json(drivers);
+    // Return driver profiles with ride statistics and ratings
+    const sanitizedDrivers = drivers.map(driver => {
+      return {
+        id: driver.id,
+        name: driver.name,
+        totalRides: driver.totalRides,
+        rating: driver.rating
+      };
+    });
+    res.json(sanitizedDrivers);
   });
 
   // POST /api/orders/create - Create an order
@@ -97,7 +115,7 @@ async function startServer() {
     res.status(201).json(newOrder);
   });
 
-  // POST /api/orders/:id/accept - Accept order by driver
+  // POST /api/drivers/:id/accept - Accept order by driver (FREE SERVICE - NO COMMISSION)
   app.post("/api/orders/:id/accept", (req, res) => {
     const { id } = req.params;
     const { driverId } = req.body;
@@ -116,30 +134,27 @@ async function startServer() {
       return res.status(400).json({ error: "Этот заказ уже принят другим водителем" });
     }
 
-    // Fixed commission validation: 1.00 TMT
-    const commission = 1.00;
-    if (driver.balance < commission) {
-      return res.status(400).json({ 
-        error: `Недостаточно средств на балансе. Требуется минимум 1.00 TMT. Ваш баланс: ${driver.balance.toFixed(2)} TMT. Пожалуйста, пополните баланс во вкладке водителя!` 
-      });
-    }
-
-    // Deduct 1 TMT from driver wallet and update order status
-    driver.balance = parseFloat((driver.balance - commission).toFixed(2));
+    // FREE SERVICE - NO COMMISSIONS, NO BALANCE REQUIREMENTS
+    driver.totalRides += 1;
+    // Simulate rating improvement based on performance
+    driver.rating = Math.min(5.0, driver.rating + 0.1);
     order.status = "accepted";
     order.acceptedBy = driver.id;
+    order.acceptedAt = Date.now();
 
     // Return successfully accepted order containing passenger's real phone number
     res.json({
       success: true,
-      message: "Заказ успешно принят! Списана комиссия 1 TMT.",
-      driverBalance: driver.balance,
+      message: "Заказ успешно принят! Бесплатно и без комиссий.",
+      driverRides: driver.totalRides,
+      driverRating: driver.rating,
       passengerPhone: order.passengerPhone,
       order: order
     });
   });
 
   // POST /api/drivers/:id/deposit - Helper to replenish a driver's balance for easy testing
+// FREE SERVICE - NO DEPOSIT NEEDED
   app.post("/api/drivers/:id/deposit", (req, res) => {
     const { id } = req.params;
     const { amount } = req.body;
@@ -154,8 +169,9 @@ async function startServer() {
       return res.status(400).json({ error: "Укажите корректную сумму пополнения" });
     }
 
-    driver.balance = parseFloat((driver.balance + numericAmount).toFixed(2));
-    res.json({ success: true, message: `Баланс успешно пополнен на ${numericAmount} TMT.`, balance: driver.balance });
+    // FREE SERVICE - This endpoint still exists for backwards compatibility but does nothing
+    // Drivers don't need to recharge for the service
+    res.json({ success: true, message: `Услуга бесплатная! Никаких пополнений не требуется. Водитель ${driver.name} может принимать заказы бесплатно.`, driver: driver });
   });
 
   // POST /api/reset - Reset everything back to original state
