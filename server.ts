@@ -22,13 +22,21 @@ interface Driver {
   rating: number;
 }
 
-// Fallback robust in-memory store simulating SQLite persistence for Termux/proot environments
+// In-memory data store with persistent simulation for Termux environment
 let drivers: Driver[] = [
   { id: "driver_1", name: "Аман (Aman)", totalRides: 12, rating: 5.0 },
   { id: "driver_2", name: "Ресул (Resul)", totalRides: 8, rating: 4.9 }
 ];
 
 let orders: Order[] = [
+  {
+    id: "order_3",
+    fromLocation: "Финальный тест А",
+    toLocation: "Финальный тест Б",
+    price: 99,
+    status: "active",
+    passengerPhone: "+99361111111"
+  },
   {
     id: "order_1",
     fromLocation: "Ашхабад, Международный аэропорт",
@@ -51,7 +59,7 @@ let orders: Order[] = [
   }
 ];
 
-let orderCounter = 3;
+let orderCounter = 4;
 
 async function startServer() {
   const app = express();
@@ -155,7 +163,7 @@ async function startServer() {
         passengerPhone: "+993 61 98-76-54"
       }
     ];
-    orderCounter = 3;
+    orderCounter = 4;
     res.json({ success: true, message: "Данные успешно сброшены" });
   });
 
