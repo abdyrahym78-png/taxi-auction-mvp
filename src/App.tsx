@@ -130,6 +130,31 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
+  // Address Geocoding helper via Nominatim
+  const getAddressFromCoords = async (lat: number, lng: number): Promise<string> => {
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ru`,
+        {
+          headers: {
+            "User-Agent": "TaxiAuctionMVP/1.0 (abdyrahym78@gmail.com)"
+          }
+        }
+      );
+      if (!response.ok) throw new Error("Nominatim API error");
+      const data = await response.json();
+      if (data && data.display_name) {
+        // Берем только первые 3 части адреса для краткости (Улица, Город, Велаят)
+        const shortAddress = data.display_name.split(",").slice(0, 3).join(",").trim();
+        return shortAddress;
+      }
+      return `Координаты [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
+    } catch (error) {
+      console.error("Ошибка геокодирования:", error);
+      return `Координаты [${lat.toFixed(4)}, ${lng.toFixed(4)}]`;
+    }
+  };
+
   // Initialize Leaflet Map
   useEffect(() => {
     if (!mapRef.current) return;
@@ -154,30 +179,23 @@ export default function App() {
       markersRef.current = markerGroup;
 
       // Click on map listener to pick coordinates
-      map.on("click", (e: L.LeafletMouseEvent) => {
+      map.on("click", async (e: L.LeafletMouseEvent) => {
         const { lat, lng } = e.latlng;
-        // We capture lat, lng and reverse-geocode simulation or placeholder description
-        const latStr = lat.toFixed(4);
-        const lngStr = lng.toFixed(4);
-        const pointDesc = `Координаты [${latStr}, ${lngStr}]`;
-
-        // Check active selection mode
-        if (mapSelectingMode === "from") {
+        const loadingText = "📍 Определение адреса...";
+        if (mapSelectingMode === "from" || !mapSelectingMode) {
           setFromCoords([lat, lng]);
-          setFromLocation(pointDesc);
-          showToast("Пункт А (Откуда) выбран на карте!", "success");
-          setMapSelectingMode("to"); // Automatically switch to selecting point B
+          setFromLocation(loadingText);
+          setMapSelectingMode("to");
+          const address = await getAddressFromCoords(lat, lng);
+          setFromLocation(address);
+          showToast(`Пункт А установлен: ${address}`, "success");
         } else if (mapSelectingMode === "to") {
           setToCoords([lat, lng]);
-          setToLocation(pointDesc);
-          showToast("Пункт Б (Куда) выбран на карте!", "success");
-          setMapSelectingMode(null); // Finish selection
-        } else {
-          // Default fallback if no mode selected: set as Point A
-          setFromCoords([lat, lng]);
-          setFromLocation(pointDesc);
-          showToast("Пункт А (Откуда) установлен!", "success");
-          setMapSelectingMode("to");
+          setToLocation(loadingText);
+          setMapSelectingMode(null);
+          const address = await getAddressFromCoords(lat, lng);
+          setToLocation(address);
+          showToast(`Пункт Б установлен: ${address}`, "success");
         }
       });
 
