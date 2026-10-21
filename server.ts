@@ -9,7 +9,7 @@ interface Order {
   fromCoords?: [number, number];
   toCoords?: [number, number];
   price: number;
-  status: "active" | "accepted";
+  status: "active" | "accepted" | "cancelled";
   passengerPhone: string;
   acceptedBy?: string;
   acceptedAt?: number;
@@ -117,7 +117,7 @@ async function startServer() {
     }
 
     if (order.status !== "active") {
-      return res.status(400).json({ error: "Этот заказ уже принят" });
+      return res.status(400).json({ error: "Этот заказ уже неактивен" });
     }
 
     driver.totalRides += 1;
@@ -134,6 +134,19 @@ async function startServer() {
       passengerPhone: order.passengerPhone,
       order: order
     });
+  });
+
+  app.post("/api/orders/:id/cancel", (req, res) => {
+    const { id } = req.params;
+    const order = orders.find(o => o.id === id);
+    if (!order) {
+      return res.status(404).json({ error: "Заказ не найден" });
+    }
+    if (order.status !== "active") {
+      return res.status(400).json({ error: "Отменить можно только активный заказ" });
+    }
+    order.status = "cancelled";
+    res.json({ success: true, message: "Заказ успешно отменен", order });
   });
 
   app.post("/api/reset", (req, res) => {

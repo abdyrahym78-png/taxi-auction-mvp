@@ -24,7 +24,7 @@ interface Order {
   fromCoords?: [number, number]; // [lat, lng]
   toCoords?: [number, number];   // [lat, lng]
   price: number;
-  status: "active" | "accepted";
+  status: "active" | "accepted" | "cancelled";
   passengerPhone: string;
   acceptedBy?: string;
 }
@@ -395,6 +395,24 @@ export default function App() {
       }
     } catch (err) {
       showToast("Ошибка сети при установке связи", "error");
+    }
+  };
+
+  const handleCancelOrder = async (orderId: string) => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}/cancel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast("Заказ успешно отменен", "info");
+        fetchOrders();
+      } else {
+        showToast(data.error || "Не удалось отменить заказ", "error");
+      }
+    } catch (err) {
+      showToast("Ошибка сети при отмене заказа", "error");
     }
   };
 
@@ -799,7 +817,7 @@ export default function App() {
                           </div>
                         </div>
 
-                        <div className="mt-5 pt-3 border-t border-white/5">
+                        <div className="mt-5 pt-3 border-t border-white/5 space-y-2">
                           {isAccepted ? (
                             <div className="space-y-2">
                               <div className="text-[10px] font-bold uppercase text-[#10b981] tracking-wider text-center">
@@ -829,6 +847,16 @@ export default function App() {
                               <span className="text-xs bg-[#10b981]/20 px-2 py-0.5 rounded-md font-extrabold text-[#4ade80]">
                                 Бесплатно
                               </span>
+                            </button>
+                          )}
+
+                          {order.status === "active" && (
+                            <button
+                              onClick={() => handleCancelOrder(order.id)}
+                              className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-2 px-3 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                            >
+                              <Trash2 size={13} />
+                              Отменить заказ
                             </button>
                           )}
                         </div>
