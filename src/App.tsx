@@ -53,6 +53,13 @@ const TURKMENISTAN_REGIONS = [
   { name: "Балканский велаят (Туркменбаши/Балканабат)", center: [39.5122, 54.3644] as [number, number], zoom: 9 },
 ];
 
+const popularLocations = [
+  { name: "Аэропорт", lat: 37.9893, lng: 58.3614 },
+  { name: "ТЦ Беркарар", lat: 37.9250, lng: 58.3833 },
+  { name: "Вокзал", lat: 37.9450, lng: 58.3500 }, // примерные координаты
+  { name: "Ямпаш", lat: 37.9300, lng: 58.3900 }   // примерные координаты
+];
+
 export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
@@ -64,7 +71,23 @@ export default function App() {
   const [fromCoords, setFromCoords] = useState<[number, number] | null>(null);
   const [toCoords, setToCoords] = useState<[number, number] | null>(null);
   const [price, setPrice] = useState<string>("");
-  const [passengerPhone, setPassengerPhone] = useState<string>("");
+  const [passengerPhone, setPassengerPhone] = useState<string>(() => {
+    return localStorage.getItem("passengerPhone") || "";
+  });
+
+  // ЗАДАЧА 2: Сохранение номера телефона в localStorage
+  useEffect(() => {
+    const savedPhone = localStorage.getItem("passengerPhone");
+    if (savedPhone) {
+      setPassengerPhone(savedPhone);
+    }
+  }, []);
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPassengerPhone(val);
+    localStorage.setItem("passengerPhone", val);
+  };
   
   // Selection mode on map: 'from' or 'to' or null
   const [mapSelectingMode, setMapSelectingMode] = useState<"from" | "to" | null>("from");
@@ -572,6 +595,23 @@ export default function App() {
                     className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24]"
                     required
                   />
+                  {/* ЗАДАЧА 1: Быстрые кнопки-ориентиры (Чипсы) */}
+                  <div className="flex overflow-x-auto gap-2 py-1 scrollbar-thin scrollbar-thumb-[#3f3f46]">
+                    {popularLocations.map((loc, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          setFromLocation(loc.name);
+                          setFromCoords([loc.lat, loc.lng]);
+                          showToast(`Выбрано: ${loc.name}`, "success");
+                        }}
+                        className="whitespace-nowrap bg-[#27272a] hover:bg-[#fbbf24] hover:text-black text-[#a1a1aa] border border-[#3f3f46] hover:border-transparent text-xs px-2.5 py-1 rounded-lg transition-all font-medium cursor-pointer"
+                      >
+                        📍 {loc.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Point B */}
@@ -629,9 +669,10 @@ export default function App() {
                   </label>
                   <input
                     type="tel"
+                    pattern="^\+993[0-9]{8}$"
                     value={passengerPhone}
-                    onChange={(e) => setPassengerPhone(e.target.value)}
-                    placeholder="+993 65 12-34-56"
+                    onChange={handlePhoneChange}
+                    placeholder="+99365123456"
                     className="w-full bg-[#27272a] border border-[#3f3f46] rounded-xl px-4 py-3 text-sm text-white placeholder-[#71717a] focus:outline-none focus:border-[#fbbf24]"
                     required
                   />
