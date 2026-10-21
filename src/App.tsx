@@ -79,6 +79,7 @@ export default function App() {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
+  const routeLineRef = useRef<L.Polyline | null>(null);
 
   const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
     const id = Date.now() + Math.random();
@@ -258,7 +259,33 @@ export default function App() {
     });
   }, [fromCoords, toCoords, fromLocation, toLocation, orders]);
 
-  // Handle region switch from dropdown
+  // Draw route line between fromCoords and toCoords
+  useEffect(() => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+
+    // Remove existing route line if present
+    if (routeLineRef.current) {
+      routeLineRef.current.remove();
+      routeLineRef.current = null;
+    }
+
+    if (fromCoords && toCoords) {
+      // Create dashed polyline for route visualization
+      const polyline = L.polyline([fromCoords, toCoords], {
+        color: "#fbbf24",
+        weight: 4,
+        opacity: 0.8,
+        dashArray: "8, 12",
+      }).addTo(map);
+
+      routeLineRef.current = polyline;
+
+      // Fit map bounds to show both points with some padding
+      const bounds = L.latLngBounds([fromCoords, toCoords]);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 15 });
+    }
+  }, [fromCoords, toCoords]);
   const handleRegionChange = (index: number) => {
     setSelectedRegionIndex(index);
     const region = TURKMENISTAN_REGIONS[index];
