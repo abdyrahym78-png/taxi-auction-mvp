@@ -360,7 +360,6 @@ export default function App() {
         setFromCoords(null);
         setToCoords(null);
         setPrice("");
-        setPassengerPhone("");
         fetchOrders();
       } else {
         const errData = await res.json();
