@@ -97,6 +97,7 @@ export default function App() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [revealedPhones, setRevealedPhones] = useState<Record<string, string>>({});
+  const [showTerms, setShowTerms] = useState<boolean>(false);
 
   // Leaflet map refs
   const mapRef = useRef<HTMLDivElement | null>(null);
@@ -703,6 +704,16 @@ export default function App() {
                   {loading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
                   Опубликовать заказ
                 </button>
+                <p className="text-[11px] text-[#a1a1aa] text-center mt-2 leading-relaxed">
+                  Нажимая кнопку, вы соглашаетесь с{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowTerms(true)}
+                    className="text-[#fbbf24] underline hover:text-[#fbbf24]/80 cursor-pointer font-medium"
+                  >
+                    условиями использования
+                  </button>
+                </p>
               </form>
             </div>
 
@@ -906,6 +917,50 @@ export default function App() {
           </div>
         ))}
       </div>
+
+      {/* TERMS MODAL */}
+      {showTerms && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-[#18181b] border border-white/10 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <h3 className="text-base font-bold text-white flex items-center gap-2">
+                <Info size={18} className="text-[#fbbf24]" />
+                Условия использования и правила сервиса
+              </h3>
+              <button
+                onClick={() => setShowTerms(false)}
+                className="text-[#a1a1aa] hover:text-white text-lg font-bold px-2 py-1 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-[#a1a1aa] leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
+              <p>
+                <strong className="text-white">1. Информационный сервис (Direct-Connection):</strong> SAYT X TAXI является исключительно информационной платформой для прямого связывания пассажиров и водителей в Туркменистане. Сервис не является службой такси и не взимает комиссий за поездки.
+              </p>
+              <p>
+                <strong className="text-white">2. Прямые договоренности:</strong> Все условия поездки, маршрут и стоимость оговариваются напрямую между пассажиром и водителем по телефону или при личной встрече. Оплата производится напрямую водителю.
+              </p>
+              <p>
+                <strong className="text-white">3. Защита данных и конфиденциальность:</strong> Номер телефона пассажира используется исключительно для прямой связи с водителем при нажатии кнопки «Связаться с пассажиром» и сохраняется локально на вашем устройстве для удобства.
+              </p>
+              <p>
+                <strong className="text-white">4. Авто-очистка и статус заказов:</strong> Пользователь имеет возможность в любой момент отменить созданный активный заказ. Устаревшие или отмененные заказы автоматически скрываются из ленты эфира.
+              </p>
+            </div>
+
+            <div className="pt-3 border-t border-white/5 flex justify-end">
+              <button
+                onClick={() => setShowTerms(false)}
+                className="bg-[#fbbf24] hover:bg-[#fbbf24]/90 text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer transition-all"
+              >
+                Понятно
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
