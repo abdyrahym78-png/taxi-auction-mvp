@@ -91,6 +91,11 @@ export default function App() {
   
   // Selection mode on map: 'from' or 'to' or null
   const [mapSelectingMode, setMapSelectingMode] = useState<"from" | "to" | null>("from");
+  const mapSelectingModeRef = useRef(mapSelectingMode);
+  
+  useEffect(() => {
+    mapSelectingModeRef.current = mapSelectingMode;
+  }, [mapSelectingMode]);
   const [selectedRegionIndex, setSelectedRegionIndex] = useState<number>(0);
   
   const [loading, setLoading] = useState<boolean>(false);
@@ -207,14 +212,15 @@ export default function App() {
       map.on("click", async (e: L.LeafletMouseEvent) => {
         const { lat, lng } = e.latlng;
         const loadingText = "📍 Определение адреса...";
-        if (mapSelectingMode === "from" || !mapSelectingMode) {
+        const currentMode = mapSelectingModeRef.current;
+        if (currentMode === "from" || !currentMode) {
           setFromCoords([lat, lng]);
           setFromLocation(loadingText);
           setMapSelectingMode("to");
           const address = await getAddressFromCoords(lat, lng);
           setFromLocation(address);
           showToast(`Пункт А установлен: ${address}`, "success");
-        } else if (mapSelectingMode === "to") {
+        } else if (currentMode === "to") {
           setToCoords([lat, lng]);
           setToLocation(loadingText);
           setMapSelectingMode(null);
