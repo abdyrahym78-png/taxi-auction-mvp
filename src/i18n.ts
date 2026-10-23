@@ -15,6 +15,9 @@ export const translations: Record<Lang, Record<string, string>> = {
     price: "Цена поездки (TMT)",
     passengerPhone: "Телефон пассажира",
     submitOrderBtn: "Опубликовать заказ",
+    myLocationBtn: "📍 Моё местоположение",
+    geolocationNotSupported: "Геолокация не поддерживается",
+    determiningLocation: "Определение местоположения...",
   },
   tm: {
     appName: "SAYT X TAXI",
@@ -31,5 +34,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     price: "Ýol bahasy (TMT)",
     passengerPhone: "Ýolagçynyň telefony",
     submitOrderBtn: "Sargydy çap etmek",
+    myLocationBtn: "📍 Meniň ýerleşýän ýerim",
+    geolocationNotSupported: "Geolokalizasiýa goldanylmaýar",
+    determiningLocation: "Ýerleşýän ýeri kesgitlenilýär...",
   }
 };

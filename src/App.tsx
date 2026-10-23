@@ -626,9 +626,40 @@ export default function App() {
                       onClick={() => setMapSelectingMode("from")}
                       className="text-[10px] text-[#fbbf24] hover:underline"
                     >
-                      Выбрать на карте
+                      {t.selectOnMap || "Выбрать на карте"}
                     </button>
                   </label>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (!navigator.geolocation) {
+                        showToast(t.geolocationNotSupported || "Геолокация не поддерживается", "error");
+                        return;
+                      }
+                      showToast(t.determiningLocation || "Определение местоположения...", "info");
+                      navigator.geolocation.getCurrentPosition(
+                        async (position) => {
+                          const { latitude, longitude } = position.coords;
+                          setFromCoords([latitude, longitude]);
+                          setFromLocation("📍 Определение адреса...");
+                          const address = await getAddressFromCoords(latitude, longitude);
+                          setFromLocation(address);
+                          if (mapInstanceRef.current) {
+                            mapInstanceRef.current.setView([latitude, longitude], 15);
+                          }
+                          showToast("Местоположение успешно определено", "success");
+                        },
+                        (error) => {
+                          console.error(error);
+                          showToast("Не удалось определить местоположение", "error");
+                        },
+                        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                      );
+                    }}
+                    className="w-full mb-1 bg-[#27272a] hover:bg-[#3f3f46] text-[#fbbf24] border border-[#fbbf24]/30 px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm"
+                  >
+                    {t.myLocationBtn}
+                  </button>
                   <input
                     type="text"
                     value={fromLocation}
