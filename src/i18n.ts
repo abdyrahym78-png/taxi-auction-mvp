@@ -1,0 +1,35 @@
+export type Lang = "ru" | "tm";
+export const translations: Record<Lang, Record<string, string>> = {
+  ru: {
+    appName: "SAYT X TAXI",
+    directConnection: "Прямая связь • 100% Бесплатно",
+    subtitle: "Прямое связывание пассажира и водителя по всему Туркменистану без комиссий и балансов",
+    mapTitle: "Карта Туркменистана (OpenStreetMap)",
+    mapSubtitle: "Выберите велаят или кликните прямо на карту для установки точки А (Откуда) и точки Б (Куда)",
+    pointA: "Точка А",
+    pointB: "Точка Б",
+    createOrder: "Создать заказ",
+    createOrderHint: "Заполните пункты маршрута (или выберите на карте), цену в манатах и телефон для прямой связи.",
+    from: "Откуда (Пункт А)",
+    to: "Куда (Пункт Б)",
+    price: "Цена поездки (TMT)",
+    passengerPhone: "Телефон пассажира",
+    submitOrderBtn: "Опубликовать заказ",
+  },
+  tm: {
+    appName: "SAYT X TAXI",
+    directConnection: "Göni aragatnaşyk • 100% Mugt",
+    subtitle: "Türkmenistan boýunça ýolagçy bilen sürüjiniň arasynda komissiyasyz göni baglanyşyk",
+    mapTitle: "Türkmenistanyň karty (OpenStreetMap)",
+    mapSubtitle: "Welaýaty saýlaň ýa-da A (Nireden) we B (Nirene) nokatlary bellemek üçin göni karta basyň",
+    pointA: "A nokady",
+    pointB: "B nokady",
+    createOrder: "Sargyt döretmek",
+    createOrderHint: "Ulgam nokatlaryny dolduryň (ýa-da kartadan saýlaň), manatda baha we göni aragatnaşyk üçin telefon.",
+    from: "Nireden (A nokady)",
+    to: "Nirene (B nokady)",
+    price: "Ýol bahasy (TMT)",
+    passengerPhone: "Ýolagçynyň telefony",
+    submitOrderBtn: "Sargydy çap etmek",
+  }
+};

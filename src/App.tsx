@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { translations, type Lang } from "./i18n";
 import { 
   MapPin, 
   Navigation, 
@@ -64,6 +65,17 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selectedDriverId, setSelectedDriverId] = useState<string>("driver_1");
+
+  const [lang, setLang] = useState<Lang>(() => {
+    return (localStorage.getItem("lang") as Lang) || "ru";
+  });
+  const t = translations[lang];
+
+  const toggleLanguage = () => {
+    const newLang = lang === "ru" ? "tm" : "ru";
+    setLang(newLang);
+    localStorage.setItem("lang", newLang);
+  };
   
   // Order form state
   const [fromLocation, setFromLocation] = useState<string>("");
@@ -455,19 +467,25 @@ export default function App() {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">SAYT X TAXI</h1>
+                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight">{t.appName}</h1>
                 <span className="text-[10px] bg-[#fbbf24]/20 text-[#fbbf24] border border-[#fbbf24]/30 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                  Прямая связь • 100% Бесплатно
+                  {t.directConnection}
                 </span>
               </div>
               <p className="text-xs text-[#a1a1aa] mt-0.5">
-                Прямое связывание пассажира и водителя по всему Туркменистану без комиссий и балансов
+                {t.subtitle}
               </p>
             </div>
           </div>
 
           {/* Test Driver Switcher & Stats */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 w-full md:w-auto">
+            <button
+              onClick={toggleLanguage}
+              className="bg-[#27272a] hover:bg-[#3f3f46] text-white border border-[#3f3f46] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md"
+            >
+              🌐 {lang === "ru" ? "Türkmençe" : "Русский"}
+            </button>
             <div className="bg-[#27272a] p-1.5 rounded-xl border border-white/5 flex gap-1">
               <button
                 id="btn-switch-aman"
@@ -517,9 +535,9 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="w-1.5 h-6 bg-[#fbbf24] rounded-full"></div>
               <div>
-                <h2 className="text-lg font-bold tracking-tight">Карта Туркменистана (OpenStreetMap)</h2>
+                <h2 className="text-lg font-bold tracking-tight">{t.mapTitle}</h2>
                 <p className="text-xs text-[#a1a1aa]">
-                  Выберите велаят или кликните прямо на карту для установки точки А (Откуда) и точки Б (Куда)
+                  {t.mapSubtitle}
                 </p>
               </div>
             </div>
@@ -549,7 +567,7 @@ export default function App() {
                   }`}
                 >
                   <MapPin size={12} />
-                  Точка А {fromCoords ? "✓" : ""}
+                  {t.pointA} {fromCoords ? "✓" : ""}
                 </button>
                 <button
                   type="button"
@@ -561,7 +579,7 @@ export default function App() {
                   }`}
                 >
                   <Navigation size={12} />
-                  Точка Б {toCoords ? "✓" : ""}
+                  {t.pointB} {toCoords ? "✓" : ""}
                 </button>
               </div>
             </div>
@@ -589,10 +607,10 @@ export default function App() {
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-6 bg-[#fbbf24] rounded-full"></div>
-                <h2 className="text-lg font-bold tracking-tight">Создать заказ</h2>
+                <h2 className="text-lg font-bold tracking-tight">{t.createOrder}</h2>
               </div>
               <p className="text-xs text-[#a1a1aa]">
-                Заполните пункты маршрута (или выберите на карте), цену в манатах и телефон для прямой связи.
+                {t.createOrderHint}
               </p>
               
               <form onSubmit={handleCreateOrder} className="space-y-4 pt-2">
@@ -601,7 +619,7 @@ export default function App() {
                   <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <MapPin size={12} className="text-[#fbbf24]" />
-                      Откуда (Пункт А)
+                      {t.from}
                     </span>
                     <button
                       type="button"
@@ -643,7 +661,7 @@ export default function App() {
                   <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center justify-between">
                     <span className="flex items-center gap-1.5">
                       <Navigation size={12} className="text-[#10b981]" />
-                      Куда (Пункт Б)
+                      {t.to}
                     </span>
                     <button
                       type="button"
@@ -666,7 +684,7 @@ export default function App() {
                 {/* Price */}
                 <div className="space-y-1.5">
                   <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                    Цена поездки (TMT)
+                    {t.price}
                   </label>
                   <div className="relative">
                     <input
@@ -689,7 +707,7 @@ export default function App() {
                 <div className="space-y-1.5">
                   <label className="text-xs text-[#a1a1aa] font-semibold uppercase tracking-wider flex items-center gap-1.5">
                     <Phone size={12} className="text-[#fbbf24]" />
-                    Телефон пассажира
+                    {t.passengerPhone}
                   </label>
                   <input
                     type="tel"
@@ -708,7 +726,7 @@ export default function App() {
                   className="w-full bg-[#fbbf24] hover:bg-[#fbbf24]/90 disabled:opacity-50 text-black font-extrabold py-3.5 px-4 rounded-xl shadow-lg transition-all active:scale-[0.98] text-sm uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer mt-4"
                 >
                   {loading ? <RefreshCw size={16} className="animate-spin" /> : <Plus size={16} />}
-                  Опубликовать заказ
+                  {t.submitOrderBtn}
                 </button>
                 <p className="text-[11px] text-[#a1a1aa] text-center mt-2 leading-relaxed">
                   Нажимая кнопку, вы соглашаетесь с{" "}
