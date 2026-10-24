@@ -277,7 +277,7 @@ export default function App() {
         icon: createCustomPin("А", "#fbbf24"),
       })
         .addTo(markerGroup)
-        .bindPopup(`<b>Пункт А (Откуда)</b><br/>${fromLocation}`);
+        .bindPopup(`<b>${t.pointA}</b><br/>${fromLocation}`);
     }
 
     // Add Point B marker if selected
@@ -286,7 +286,7 @@ export default function App() {
         icon: createCustomPin("Б", "#10b981"),
       })
         .addTo(markerGroup)
-        .bindPopup(`<b>Пункт Б (Куда)</b><br/>${toLocation}`);
+        .bindPopup(`<b>${t.pointB}</b><br/>${toLocation}`);
     }
 
     // Also plot active orders on the map if they have coordinates
@@ -519,9 +519,9 @@ export default function App() {
                   <Car size={16} />
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase text-[#fbbf24] font-bold tracking-wider">Рейсы водителя</div>
+                  <div className="text-[10px] uppercase text-[#fbbf24] font-bold tracking-wider">{t.driversRides}</div>
                   <div className="text-base font-black tracking-tight text-white tabular-nums">
-                    {activeDriver.totalRides} поездок (Бесплатно)
+                    {activeDriver.totalRides} {t.tripsFree}
                   </div>
                 </div>
               </div>
@@ -593,7 +593,7 @@ export default function App() {
             <div className="absolute top-3 left-3 z-20 bg-black/80 backdrop-blur-md border border-white/10 px-3.5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-lg">
               <span className="w-2.5 h-2.5 rounded-full animate-ping bg-[#fbbf24]"></span>
               <span className="font-semibold text-white">
-                Режим выбора: <strong className="text-[#fbbf24] uppercase">{mapSelectingMode === "from" ? "Пункт А (Откуда)" : mapSelectingMode === "to" ? "Пункт Б (Куда)" : "Просмотр"}</strong>. Кликните на карту.
+                {t.mapMode} <strong className="text-[#fbbf24] uppercase">{mapSelectingMode === "from" ? t.mapModeFrom : mapSelectingMode === "to" ? t.mapModeTo : t.mapModeView}</strong>. {t.clickOnMap}
               </span>
             </div>
           </div>
@@ -699,7 +699,7 @@ export default function App() {
                       onClick={() => setMapSelectingMode("to")}
                       className="text-[10px] text-[#10b981] hover:underline"
                     >
-                      Выбрать на карте
+                      {t.selectOnMap || "Выбрать на карте"}
                     </button>
                   </label>
                   <input
