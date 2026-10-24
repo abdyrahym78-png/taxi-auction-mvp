@@ -43,7 +43,6 @@ interface Toast {
   id: number;
 }
 
-// Turkmenistan regions preset for quick selection
 const TURKMENISTAN_REGIONS = [
   { name: "Ашхабад (Столица)", center: [37.9601, 58.3261] as [number, number], zoom: 12 },
   { name: "Аркадаг (Новый город)", center: [38.0500, 58.1000] as [number, number], zoom: 13 },

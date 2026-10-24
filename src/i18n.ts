@@ -72,7 +72,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     geolocationNotSupported: "Geolokalizasiýa goldanylmaýar",
     determiningLocation: "Ýerleşýän ýeri kesgitlenilýär...",
     driversRides: "Sürüjiniň reýsleri",
-    tripsFree: "sapak",
+    tripsFree: "reys",
     mapMode: "Saýlaw tertibi:",
     mapModeFrom: "A nokady (Nireden)",
     mapModeTo: "B nokady (Nirä)",
