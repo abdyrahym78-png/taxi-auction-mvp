@@ -1,0 +1,69 @@
+{
+  "drivers": [
+    {
+      "id": "driver_1",
+      "name": "Аман (Aman)",
+      "totalRides": 13,
+      "rating": 5
+    },
+    {
+      "id": "driver_2",
+      "name": "Ресул (Resul)",
+      "totalRides": 8,
+      "rating": 4.9
+    }
+  ],
+  "orders": [
+    {
+      "id": "order_4",
+      "fromLocation": "Аэропорт ",
+      "toLocation": "Вокзал ",
+      "price": 25,
+      "status": "accepted",
+      "passengerPhone": "+99365123456",
+      "acceptedBy": "driver_1",
+      "acceptedAt": 1792845891414
+    },
+    {
+      "id": "order_3",
+      "fromLocation": "Финальный тест А",
+      "toLocation": "Финальный тест Б",
+      "price": 99,
+      "status": "active",
+      "passengerPhone": "+993****1111"
+    },
+    {
+      "id": "order_1",
+      "fromLocation": "Ашхабад, Международный аэропорт",
+      "toLocation": "Ашхабад, ТЦ Беркарар",
+      "fromCoords": [
+        37.9893,
+        58.3614
+      ],
+      "toCoords": [
+        37.925,
+        58.3833
+      ],
+      "price": 30,
+      "status": "active",
+      "passengerPhone": "+993 65 12-34-56"
+    },
+    {
+      "id": "order_2",
+      "fromLocation": "Марыйский велаят, город Мары (Центр)",
+      "toLocation": "Марыйский велаят, Древний Мерв",
+      "fromCoords": [
+        37.5955,
+        61.8306
+      ],
+      "toCoords": [
+        37.6881,
+        62.1883
+      ],
+      "price": 80,
+      "status": "cancelled",
+      "passengerPhone": "+993 61 98-76-54"
+    }
+  ],
+  "orderCounter": 5
+}

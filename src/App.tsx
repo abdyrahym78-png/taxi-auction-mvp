@@ -484,7 +484,7 @@ export default function App() {
               onClick={toggleLanguage}
               className="bg-[#27272a] hover:bg-[#3f3f46] text-white border border-[#3f3f46] px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-md"
             >
-              🌐 {lang === "ru" ? "Türkmençe" : "Русский"}
+              🌐 {lang === "ru" ? "RU" : "TM"}
             </button>
             <div className="bg-[#27272a] p-1.5 rounded-xl border border-white/5 flex gap-1">
               <button
