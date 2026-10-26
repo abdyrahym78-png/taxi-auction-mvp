@@ -3,7 +3,7 @@
     {
       "id": "driver_1",
       "name": "Аман (Aman)",
-      "totalRides": 13,
+      "totalRides": 18,
       "rating": 5
     },
     {
@@ -14,6 +14,110 @@
     }
   ],
   "orders": [
+    {
+      "id": "order_10",
+      "fromLocation": "проспект Гурбансолтан Эдже, Багтыярлыкский этрап, Ашхабад",
+      "toLocation": "Aýlaw ýoly, Багтыярлыкский этрап, Ашхабад",
+      "fromCoords": [
+        38.01022552591599,
+        58.288179131360835
+      ],
+      "toCoords": [
+        38.075288046766865,
+        58.24028333773845
+      ],
+      "price": 25,
+      "status": "accepted",
+      "passengerPhone": "+99363123456",
+      "acceptedBy": "driver_1",
+      "acceptedAt": 1793019885970
+    },
+    {
+      "id": "order_9",
+      "fromLocation": "Багтыярлыкский этрап, Ашхабад, 744008",
+      "toLocation": "Копетдагский этрап, Ашхабад, 744034",
+      "fromCoords": [
+        37.9757034771398,
+        58.350681157082555
+      ],
+      "toCoords": [
+        37.9225938923935,
+        58.379162410954535
+      ],
+      "price": 25,
+      "status": "accepted",
+      "passengerPhone": "+99363123456",
+      "acceptedBy": "driver_1",
+      "acceptedAt": 1793019879213
+    },
+    {
+      "id": "order_8",
+      "fromLocation": "Сахимерданская улица, Безмеинский этрап, Бикрова",
+      "toLocation": "проспект Битарап Туркменистан, Копетдагский этрап, Ашхабад",
+      "fromCoords": [
+        37.932581205162656,
+        58.29606160924309
+      ],
+      "toCoords": [
+        37.92881304076611,
+        58.374718463813494
+      ],
+      "price": 25,
+      "status": "accepted",
+      "passengerPhone": "+99363123456",
+      "acceptedBy": "driver_1",
+      "acceptedAt": 1793019634549
+    },
+    {
+      "id": "order_7",
+      "fromLocation": "Ялкима улица, Безмеинский этрап, Багтыярлыкский этрап",
+      "toLocation": "Молодежная улица, Безмеинский этрап, Бикрова",
+      "fromCoords": [
+        37.986960381668155,
+        58.285068995841435
+      ],
+      "toCoords": [
+        37.931691518602676,
+        58.29537162468208
+      ],
+      "price": 25,
+      "status": "cancelled",
+      "passengerPhone": "+99365123456"
+    },
+    {
+      "id": "order_6",
+      "fromLocation": "Дизельная АЗС 172 Bagtyyarlyk, проспект Гурбансолтан Эдже, Багтыярлыкский этрап",
+      "toLocation": "Безмеинский этрап, Бикрова, Ашхабад",
+      "fromCoords": [
+        37.9882688731046,
+        58.324574396507835
+      ],
+      "toCoords": [
+        37.92638152977573,
+        58.29194311110049
+      ],
+      "price": 25,
+      "status": "accepted",
+      "passengerPhone": "+99365123456",
+      "acceptedBy": "driver_1",
+      "acceptedAt": 1792999581552
+    },
+    {
+      "id": "order_5",
+      "fromLocation": "Кеши, Багтыярлыкский этрап, Ашхабад",
+      "toLocation": "Безмеинский этрап, Бикрова, Ашхабад",
+      "fromCoords": [
+        37.96244915881529,
+        58.33590983282408
+      ],
+      "toCoords": [
+        37.929126627069266,
+        58.294346763207635
+      ],
+      "price": 25,
+      "status": "cancelled",
+      "passengerPhone": "+99365123496"
+    },
     {
       "id": "order_4",
       "fromLocation": "Аэропорт ",
@@ -29,7 +133,7 @@
       "fromLocation": "Финальный тест А",
       "toLocation": "Финальный тест Б",
       "price": 99,
-      "status": "active",
+      "status": "cancelled",
       "passengerPhone": "+993****1111"
     },
     {
@@ -45,8 +149,10 @@
         58.3833
       ],
       "price": 30,
-      "status": "active",
-      "passengerPhone": "+993 65 12-34-56"
+      "status": "accepted",
+      "passengerPhone": "+993 65 12-34-56",
+      "acceptedBy": "driver_1",
+      "acceptedAt": 1793019688921
     },
     {
       "id": "order_2",
@@ -65,5 +171,5 @@
       "passengerPhone": "+993 61 98-76-54"
     }
   ],
-  "orderCounter": 5
+  "orderCounter": 11
 }

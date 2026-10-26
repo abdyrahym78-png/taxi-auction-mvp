@@ -43,14 +43,14 @@ interface Toast {
   id: number;
 }
 
-const TURKMENISTAN_REGIONS = [
-  { name: "Ашхабад (Столица)", center: [37.9601, 58.3261] as [number, number], zoom: 12 },
-  { name: "Аркадаг (Новый город)", center: [38.0500, 58.1000] as [number, number], zoom: 13 },
-  { name: "Ахалский велаят (Анау/Бахарден)", center: [37.9000, 58.5000] as [number, number], zoom: 9 },
-  { name: "Марыйский велаят (Мары/Мерв)", center: [37.5955, 61.8306] as [number, number], zoom: 10 },
-  { name: "Лебапский велаят (Туркменабат)", center: [39.0855, 63.5786] as [number, number], zoom: 10 },
-  { name: "Дашогузский велаят (Дашогуз)", center: [41.8368, 59.9666] as [number, number], zoom: 10 },
-  { name: "Балканский велаят (Туркменбаши/Балканабат)", center: [39.5122, 54.3644] as [number, number], zoom: 9 },
+const getRegions = (t: Record<string, string>) => [
+  { name: t.regionAshgabat, center: [37.9601, 58.3261] as [number, number], zoom: 12 },
+  { name: t.regionArkadag, center: [38.0500, 58.1000] as [number, number], zoom: 13 },
+  { name: t.regionAhal, center: [37.9000, 58.5000] as [number, number], zoom: 9 },
+  { name: t.regionMary, center: [37.5955, 61.8306] as [number, number], zoom: 10 },
+  { name: t.regionLebap, center: [39.0855, 63.5786] as [number, number], zoom: 10 },
+  { name: t.regionDashoguz, center: [41.8368, 59.9666] as [number, number], zoom: 10 },
+  { name: t.regionBalkan, center: [39.5122, 54.3644] as [number, number], zoom: 9 },
 ];
 
 const popularLocations = [
@@ -329,7 +329,7 @@ export default function App() {
   }, [fromCoords, toCoords]);
   const handleRegionChange = (index: number) => {
     setSelectedRegionIndex(index);
-    const region = TURKMENISTAN_REGIONS[index];
+    const region = getRegions(t)[index];
     if (mapInstanceRef.current && region) {
       mapInstanceRef.current.setView(region.center, region.zoom);
       showToast(`Карта перемещена: ${region.name}`, "info");
@@ -518,9 +518,9 @@ export default function App() {
                   <Car size={16} />
                 </div>
                 <div>
-                  <div className="text-[10px] uppercase text-[#fbbf24] font-bold tracking-wider">{t.driversRides}</div>
+                  <div className="text-[10px] uppercase text-[#fbbf24] font-bold tracking-wider">{t.driversRides || t.driverRides}</div>
                   <div className="text-base font-black tracking-tight text-white tabular-nums">
-                    {activeDriver.totalRides} {t.tripsFree}
+                    {activeDriver.totalRides} {t.trips}
                   </div>
                 </div>
               </div>
@@ -548,7 +548,7 @@ export default function App() {
                 onChange={(e) => handleRegionChange(Number(e.target.value))}
                 className="bg-[#27272a] border border-[#3f3f46] text-white text-xs font-semibold rounded-xl px-3 py-2 focus:outline-none focus:border-[#fbbf24]"
               >
-                {TURKMENISTAN_REGIONS.map((reg, idx) => (
+                {getRegions(t).map((reg, idx) => (
                   <option key={idx} value={idx}>
                     📍 {reg.name}
                   </option>
@@ -795,16 +795,16 @@ export default function App() {
               <div className="flex items-center gap-3">
                 <div className="w-1.5 h-6 bg-[#fbbf24] rounded-full"></div>
                 <div>
-                  <h2 className="text-lg font-bold tracking-tight">Эфир заказов Туркменистана</h2>
+                  <h2 className="text-lg font-bold tracking-tight">{t.liveOrders}</h2>
                   <p className="text-xs text-[#a1a1aa]">
-                    Прямая связь между клиентом и водителями по всей стране
+                    {t.liveOrdersSubtitle}
                   </p>
                 </div>
               </div>
 
               <div className="flex items-center gap-3 self-end sm:self-auto">
                 <span className="text-xs bg-[#27272a] text-[#a1a1aa] px-3 py-1.5 rounded-lg border border-white/5 font-semibold">
-                  {orders.length} активных
+                  {orders.length} {t.active}
                 </span>
                 <button
                   onClick={() => fetchOrders(true)}
@@ -812,7 +812,7 @@ export default function App() {
                   className="bg-[#27272a] hover:bg-[#3f3f46] text-[#fafafa] border border-[#3f3f46] p-2 rounded-lg transition-colors flex items-center justify-center gap-1.5 text-xs font-bold cursor-pointer"
                 >
                   <RefreshCw size={14} className={refreshing ? "animate-spin text-[#fbbf24]" : ""} />
-                  Обновить ↻
+                  {t.refresh}
                 </button>
               </div>
             </div>
@@ -821,9 +821,9 @@ export default function App() {
               {orders.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 px-4 text-center space-y-3 bg-[#27272a]/10 rounded-2xl border border-dashed border-white/5">
                   <Car size={40} className="text-[#a1a1aa] opacity-40 animate-pulse" />
-                  <div className="text-sm font-semibold text-white">Нет активных заказов</div>
+                  <div className="text-sm font-semibold text-white">{t.noOrders}</div>
                   <p className="text-xs text-[#a1a1aa] max-w-sm">
-                    Создайте заказ слева или выберите точку на карте Туркменистана.
+                    {t.noOrdersHint}
                   </p>
                 </div>
               ) : (
@@ -845,12 +845,12 @@ export default function App() {
                           <div className="flex justify-between items-start">
                             <div>
                               <span className="text-[10px] text-[#a1a1aa] uppercase font-bold tracking-widest block mb-0.5">
-                                Заказ #{order.id.replace("order_", "")}
+                                {t.orderNumber}{order.id.replace("order_", "")}
                               </span>
                               <div className="flex items-center gap-1.5">
                                 <span className={`w-2 h-2 rounded-full ${isAccepted ? "bg-[#10b981]" : "bg-[#fbbf24] animate-pulse"}`}></span>
                                 <span className={`text-xs font-bold uppercase tracking-wide ${isAccepted ? "text-[#10b981]" : "text-[#fbbf24]"}`}>
-                                  {isAccepted ? "Связь установлена" : "Ищет водителя"}
+                                  {isAccepted ? t.connected : t.searching}
                                 </span>
                               </div>
                             </div>
@@ -868,7 +868,7 @@ export default function App() {
                               <span className="absolute left-[-23px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#27272a] border border-[#fbbf24]/60 flex items-center justify-center text-[8px] text-[#fbbf24] font-black">
                                 А
                               </span>
-                              <div className="text-[10px] text-[#a1a1aa] font-bold uppercase">Откуда</div>
+                              <div className="text-[10px] text-[#a1a1aa] font-bold uppercase">{t.fromLabel}</div>
                               <p className="text-sm font-semibold text-white line-clamp-1">{order.fromLocation}</p>
                             </div>
 
@@ -876,7 +876,7 @@ export default function App() {
                               <span className="absolute left-[-23px] top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-[#27272a] border border-[#10b981]/60 flex items-center justify-center text-[8px] text-[#10b981] font-black">
                                 Б
                               </span>
-                              <div className="text-[10px] text-[#a1a1aa] font-bold uppercase">Куда</div>
+                              <div className="text-[10px] text-[#a1a1aa] font-bold uppercase">{t.toLabel}</div>
                               <p className="text-sm font-semibold text-white line-clamp-1">{order.toLocation}</p>
                             </div>
                           </div>
@@ -886,7 +886,7 @@ export default function App() {
                           {isAccepted ? (
                             <div className="space-y-2">
                               <div className="text-[10px] font-bold uppercase text-[#10b981] tracking-wider text-center">
-                                Прямая связь (Без комиссий)
+                                {t.directConnectionBadgeText}
                               </div>
                               <div className="bg-[#10b981]/10 border border-[#10b981]/20 rounded-xl p-3 flex items-center justify-between shadow-inner">
                                 <div className="flex items-center gap-2">
@@ -899,7 +899,7 @@ export default function App() {
                                   href={`tel:${revealedPhones[order.id] || order.passengerPhone}`}
                                   className="bg-[#10b981] hover:bg-[#10b981]/90 text-white font-extrabold text-xs px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm transition-transform active:scale-95 cursor-pointer"
                                 >
-                                  Позвонить
+                                  {t.call}
                                 </a>
                               </div>
                             </div>
@@ -908,9 +908,9 @@ export default function App() {
                               onClick={() => handleAcceptOrder(order.id)}
                               className="w-full bg-[#27272a] hover:bg-[#fbbf24] hover:text-black border border-white/5 hover:border-transparent text-white font-bold py-3 px-4 rounded-xl flex items-center justify-between transition-all duration-200 cursor-pointer active:scale-[0.98]"
                             >
-                              <span className="text-xs uppercase tracking-wider">Связаться с пассажиром</span>
+                              <span className="text-xs uppercase tracking-wider">{t.contactPassenger}</span>
                               <span className="text-xs bg-[#10b981]/20 px-2 py-0.5 rounded-md font-extrabold text-[#4ade80]">
-                                Бесплатно
+                                {t.freeBadgeText}
                               </span>
                             </button>
                           )}
@@ -921,7 +921,7 @@ export default function App() {
                               className="w-full bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 py-2 px-3 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                             >
                               <Trash2 size={13} />
-                              Отменить заказ
+                              {t.cancelOrderButtonText}
                             </button>
                           )}
                         </div>
@@ -938,11 +938,11 @@ export default function App() {
       <footer className="max-w-7xl w-full mx-auto mt-8 pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-[#a1a1aa]">
         <div className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 bg-[#fbbf24] rounded-full"></span>
-          <span>SAYT X TAXI — Прямое связывание клиента и водителя по всему Туркменистану</span>
+          <span>{t.footerTextContent}</span>
         </div>
         <div className="flex items-center gap-4">
-          <span>Leaflet + OpenStreetMap</span>
-          <span>Без комиссий и кошельков</span>
+          <span>{t.footerDetailsContent}</span>
+          <span>{t.footerNoCommissionContent}</span>
         </div>
       </footer>
 
@@ -964,7 +964,7 @@ export default function App() {
             {toast.type === "info" && <Info size={18} className="shrink-0 mt-0.5" />}
             <div>
               <p className="text-xs font-bold uppercase tracking-wider">
-                {toast.type === "success" ? "Успешно" : toast.type === "error" ? "Ошибка" : "Информация"}
+                {toast.type === "success" ? t.successToastTitle : toast.type === "error" ? t.errorToastTitle : t.infoToastTitle}
               </p>
               <p className="text-xs mt-0.5 font-medium leading-relaxed">{toast.message}</p>
             </div>
@@ -979,7 +979,7 @@ export default function App() {
             <div className="flex items-center justify-between border-b border-white/5 pb-3">
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <Info size={18} className="text-[#fbbf24]" />
-                Условия использования и правила сервиса
+                {t.termsTitle}
               </h3>
               <button
                 onClick={() => setShowTerms(false)}
@@ -988,28 +988,18 @@ export default function App() {
                 ✕
               </button>
             </div>
-
             <div className="space-y-3 text-xs text-[#a1a1aa] leading-relaxed max-h-[60vh] overflow-y-auto pr-2">
-              <p>
-                <strong className="text-white">1. Информационный сервис (Direct-Connection):</strong> SAYT X TAXI является исключительно информационной платформой для прямого связывания пассажиров и водителей в Туркменистане. Сервис не является службой такси и не взимает комиссий за поездки.
-              </p>
-              <p>
-                <strong className="text-white">2. Прямые договоренности:</strong> Все условия поездки, маршрут и стоимость оговариваются напрямую между пассажиром и водителем по телефону или при личной встрече. Оплата производится напрямую водителю.
-              </p>
-              <p>
-                <strong className="text-white">3. Защита данных и конфиденциальность:</strong> Номер телефона пассажира используется исключительно для прямой связи с водителем при нажатии кнопки «Связаться с пассажиром» и сохраняется локально на вашем устройстве для удобства.
-              </p>
-              <p>
-                <strong className="text-white">4. Авто-очистка и статус заказов:</strong> Пользователь имеет возможность в любой момент отменить созданный активный заказ. Устаревшие или отмененные заказы автоматически скрываются из ленты эфира.
-              </p>
+              <p><strong className="text-white">1.</strong> {t.terms1}</p>
+              <p><strong className="text-white">2.</strong> {t.terms2}</p>
+              <p><strong className="text-white">3.</strong> {t.terms3}</p>
+              <p><strong className="text-white">4.</strong> {t.terms4}</p>
             </div>
-
             <div className="pt-3 border-t border-white/5 flex justify-end">
               <button
                 onClick={() => setShowTerms(false)}
                 className="bg-[#fbbf24] hover:bg-[#fbbf24]/90 text-black font-extrabold text-xs px-5 py-2.5 rounded-xl cursor-pointer transition-all"
               >
-                Понятно
+                {t.gotIt}
               </button>
             </div>
           </div>
